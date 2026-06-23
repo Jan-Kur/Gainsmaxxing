@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -58,6 +60,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.gainsmaxxing.ui.components.ChartTooltip
 import com.gainsmaxxing.ui.components.clickableNoRipple
 import com.gainsmaxxing.ui.home.SettingsSheet
 import com.gainsmaxxing.ui.theme.Amber500
@@ -256,6 +259,7 @@ fun HomeScreen() {
                         data = bwData.takeLast(26),
                         activeDot = activeBw,
                         onDotClick = { activeBw = if (activeBw == it) null else it },
+                        onDismiss = { activeBw = null },
                     )
                 }
 
@@ -267,6 +271,7 @@ fun HomeScreen() {
                         data = sleepData,
                         activeBar = activeSleep,
                         onBarClick = { activeSleep = if (activeSleep == it) null else it },
+                        onDismiss = { activeSleep = null },
                     )
                 }
             }
@@ -354,11 +359,12 @@ private fun BodyweightCard(
     data: List<BwPoint>,
     activeDot: Int?,
     onDotClick: (Int) -> Unit,
+    onDismiss: () -> Unit,
 ) {
     val current = data.last().weight
     val prev = data[data.size - 2].weight
     val delta = current - prev
-    val deltaStr = (if (delta >= 0) "+" else "") + "%.1f kg".format(delta)
+    val deltaStr = (if (delta >= 0) "+" else "") + "%.1f kg".format(Locale.ROOT, delta)
     val deltaColor = if (delta <= 0) Green500 else Red400
 
     Column(
@@ -367,6 +373,7 @@ private fun BodyweightCard(
             .clip(RoundedCornerShape(20.dp))
             .background(Surface1)
             .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } }
             .padding(18.dp),
     ) {
         Row(
@@ -376,7 +383,7 @@ private fun BodyweightCard(
         ) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
-                    text = "%.1f".format(current),
+                    text = "%.1f".format(Locale.ROOT, current),
                     fontFamily = GeistMonoFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 36.sp,
@@ -422,7 +429,7 @@ private fun BodyweightCard(
 
         Row(verticalAlignment = Alignment.Top) {
             // Y axis
-            Box(modifier = Modifier.width(30.dp).height(chartHeightDp)) {
+            Box(modifier = Modifier.wrapContentWidth().height(chartHeightDp)) {
                 yTicks.forEach { tick ->
                     val topFrac = (1f - (tick - yMin) / (yMax - yMin))
                     val density = LocalDensity.current
@@ -434,7 +441,6 @@ private fun BodyweightCard(
                         fontSize = 9.sp,
                         color = TextTertiary,
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
                             .offset { IntOffset(0, (topPx - 8.dp.toPx()).roundToInt()) },
                     )
                 }
@@ -444,19 +450,25 @@ private fun BodyweightCard(
 
             Column(modifier = Modifier.weight(1f)) {
                 // Chart canvas
-                val density = LocalDensity.current
-                Box(modifier = Modifier.fillMaxWidth().height(chartHeightDp)) {
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth().height(chartHeightDp)) {
                     Canvas(
                         modifier = Modifier
                             .fillMaxSize()
-                            .pointerInput(data) {
+                            .pointerInput(data, yMin, yMax) {
+                                val touchSlop = 36.dp.toPx()
                                 detectTapGestures { offset ->
                                     val w = size.width.toFloat()
+                                    val h = size.height.toFloat()
                                     val nearest = data.indices.minByOrNull { i ->
                                         val x = (i.toFloat() / (data.size - 1)) * w
                                         Math.abs(offset.x - x)
                                     }
-                                    nearest?.let { onDotClick(it) }
+                                    val onPoint = nearest != null && run {
+                                        val x = (nearest.toFloat() / (data.size - 1)) * w
+                                        val y = h - ((data[nearest].weight - yMin) / (yMax - yMin)) * h
+                                        Math.hypot((offset.x - x).toDouble(), (offset.y - y).toDouble()) <= touchSlop
+                                    }
+                                    if (onPoint) onDotClick(nearest!!) else onDismiss()
                                 }
                             },
                     ) {
@@ -520,19 +532,21 @@ private fun BodyweightCard(
                     // Tooltip
                     if (activeDot != null && activeDot in data.indices) {
                         val pt = data[activeDot]
-                        val chartWidthPx = with(density) { (LocalDensity.current.density * 0).dp.toPx() } // placeholder
                         val xFrac = activeDot.toFloat() / (data.size - 1)
+                        val yFrac = 1f - (pt.weight - yMin) / (yMax - yMin)
+                        val dotXDp = maxWidth * xFrac
+                        val dotYDp = maxHeight * yFrac
                         val tooltipDate = "${pt.date.dayOfMonth} ${pt.date.month.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH)}"
-                        val tooltipWeight = "%.1f kg".format(pt.weight)
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .fillMaxWidth(xFrac.coerceIn(0.05f, 0.85f)),
+                        val tooltipWeight = "%.1f kg".format(Locale.ROOT, pt.weight)
+                        ChartTooltip(
+                            chartWidth = maxWidth,
+                            chartHeight = maxHeight,
+                            anchorX = dotXDp,
+                            anchorTop = dotYDp,
+                            topOverflow = 56.dp,
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .offset(y = (-40).dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(Surface3)
                                     .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
@@ -585,6 +599,7 @@ private fun SleepCard(
     data: List<SleepEntry>,
     activeBar: Int?,
     onBarClick: (Int) -> Unit,
+    onDismiss: () -> Unit,
 ) {
     val scaleMin = 3.5f
     val scaleMax = 9f
@@ -598,11 +613,12 @@ private fun SleepCard(
             .clip(RoundedCornerShape(20.dp))
             .background(Surface1)
             .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp))
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } }
             .padding(18.dp),
     ) {
         Row(verticalAlignment = Alignment.Top) {
             // Y axis
-            Box(modifier = Modifier.width(30.dp).height(chartHeightDp)) {
+            Box(modifier = Modifier.wrapContentWidth().height(chartHeightDp)) {
                 tickHours.forEach { h ->
                     val topFrac = 1f - (h - scaleMin) / span
                     val density = LocalDensity.current
@@ -614,7 +630,6 @@ private fun SleepCard(
                         fontSize = 9.sp,
                         color = TextTertiary,
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
                             .offset { IntOffset(0, (topPx - 8.dp.toPx()).roundToInt()) },
                     )
                 }
@@ -623,7 +638,7 @@ private fun SleepCard(
             Spacer(Modifier.width(8.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Box(modifier = Modifier.fillMaxWidth().height(chartHeightDp)) {
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth().height(chartHeightDp)) {
                     // Gridlines
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val w = size.width
@@ -668,15 +683,17 @@ private fun SleepCard(
                     if (activeBar != null && activeBar in data.indices) {
                         val entry = data[activeBar]
                         val xFrac = (activeBar + 0.5f) / data.size
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(xFrac.coerceIn(0.05f, 0.85f))
-                                .fillMaxHeight(),
+                        val barHeightFrac = maxOf(0f, (entry.hours - scaleMin) / span)
+                        val barTopYDp = maxHeight * (1f - barHeightFrac)
+                        val dotXDp = maxWidth * xFrac
+                        ChartTooltip(
+                            chartWidth = maxWidth,
+                            chartHeight = maxHeight,
+                            anchorX = dotXDp,
+                            anchorTop = barTopYDp,
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .offset(y = (-8).dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(Surface3)
                                     .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))

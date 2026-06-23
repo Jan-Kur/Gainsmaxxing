@@ -162,7 +162,7 @@ As libraries get chosen and the data model grows, update the [Tech Stack](#tech-
 ## Important Rules
 - Before adding a library for new functionality, show me the options. If there's a clear best-fit winner, just name it and use it.
 - Keep the code clean and **easily testable**. Deep modules — hide complex logic behind simple interfaces. Pure logic stays in `domain/` with unit tests.
-- When working on the UI always use the theme and colors we have set up.
+- When working on the UI always use the theme, colors and text styles we set up.
 
 ## Known Gaps / Next Up
 Keep this section current. At the end of every session, replace stale items with whatever is now the actual next thing to do. A future session should be able to read this and know exactly where work left off.
