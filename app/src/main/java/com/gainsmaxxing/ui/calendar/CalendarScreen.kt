@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,11 +28,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.ChevronLeft
@@ -46,14 +52,13 @@ import com.composables.icons.lucide.Waves
 import com.composables.icons.lucide.Zap
 import com.gainsmaxxing.ui.components.clickableNoRipple
 import com.gainsmaxxing.ui.theme.BgBase
-import com.gainsmaxxing.ui.theme.BorderSubtle
 import com.gainsmaxxing.ui.theme.GeistFontFamily
 import com.gainsmaxxing.ui.theme.GeistMonoFontFamily
 import com.gainsmaxxing.ui.theme.Green500
-import com.gainsmaxxing.ui.theme.Surface3
+import com.gainsmaxxing.ui.theme.Surface2
+import com.gainsmaxxing.ui.theme.TextDisabled
 import com.gainsmaxxing.ui.theme.TextSecondary
 import com.gainsmaxxing.ui.theme.TextTertiary
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
@@ -81,13 +86,32 @@ private val schedule = listOf(
     Pair(null, null),
 )
 
+private fun Modifier.dashedBorder(
+    color: Color,
+    cornerRadius: Dp = 10.dp,
+    strokeWidth: Dp = 1.dp,
+    dashLength: Dp = 5.dp,
+    gapLength: Dp = 4.dp,
+): Modifier = this.drawBehind {
+    val strokePx = strokeWidth.toPx()
+    val dashPx = dashLength.toPx()
+    val gapPx = gapLength.toPx()
+    drawRoundRect(
+        color = color,
+        style = Stroke(
+            width = strokePx,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(dashPx, gapPx)),
+        ),
+        cornerRadius = CornerRadius(cornerRadius.toPx()),
+    )
+}
+
 @Composable
 fun CalendarScreen() {
     var weekOffset by rememberSaveable { mutableIntStateOf(0) }
     var skipped by rememberSaveable { mutableStateOf(setOf("0-3-evening", "0-4-morning", "-1-1-evening", "-1-5-morning")) }
 
     val today = LocalDate.now()
-    // Find Monday of current week (our Mon=0 system)
     val dow = today.dayOfWeek.value // 1=Mon..7=Sun
     val monday = today.minusDays((dow - 1).toLong())
     val weekStart = monday.plusWeeks(weekOffset.toLong())
@@ -118,7 +142,7 @@ fun CalendarScreen() {
                 text = weekLabel,
                 fontFamily = GeistFontFamily,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 13.sp,
+                fontSize = 15.sp,
                 color = TextSecondary,
                 letterSpacing = 0.13.sp,
             )
@@ -129,14 +153,14 @@ fun CalendarScreen() {
 
         // Column headers
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Spacer(Modifier.width(38.dp))
+            Spacer(Modifier.width(42.dp))
             Text(
                 "MORNING",
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
                 fontFamily = GeistFontFamily,
                 fontWeight = FontWeight.Bold,
-                fontSize = 9.sp,
+                fontSize = 11.sp,
                 letterSpacing = 1.08.sp,
                 color = TextTertiary,
             )
@@ -146,7 +170,7 @@ fun CalendarScreen() {
                 textAlign = TextAlign.Center,
                 fontFamily = GeistFontFamily,
                 fontWeight = FontWeight.Bold,
-                fontSize = 9.sp,
+                fontSize = 11.sp,
                 letterSpacing = 1.08.sp,
                 color = TextTertiary,
             )
@@ -156,8 +180,10 @@ fun CalendarScreen() {
 
         // Day rows
         Column(
-            modifier = Modifier.weight(1f).padding(bottom = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(5.dp),
+            modifier = Modifier
+                .weight(1f)
+                .padding(bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             (0..6).forEach { dayIdx ->
                 val date = weekStart.plusDays(dayIdx.toLong())
@@ -169,34 +195,37 @@ fun CalendarScreen() {
                 Row(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth()
-                        .let {
-                            if (isToday) it.clip(RoundedCornerShape(10.dp)).background(Green500.copy(alpha = 0.04f))
-                            else it
-                        },
+                        .fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // Day label
                     Column(
-                        modifier = Modifier.width(38.dp),
+                        modifier = Modifier
+                            .width(42.dp)
+                            .fillMaxHeight()
+                            .let {
+                                if (isToday) it.clip(RoundedCornerShape(10.dp)).background(Green500.copy(alpha = 0.06f))
+                                else it
+                            },
                         horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
                     ) {
                         Text(
                             dayNames[dayIdx],
                             fontFamily = GeistFontFamily,
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 11.sp,
-                            color = if (isToday) Green500 else TextSecondary,
-                            lineHeight = 11.sp,
+                            fontSize = 13.sp,
+                            color = if (isToday) Green500 else TextTertiary,
+                            lineHeight = 13.sp,
                         )
                         Text(
                             "${date.dayOfMonth}",
                             fontFamily = GeistMonoFontFamily,
                             fontWeight = FontWeight.Medium,
-                            fontSize = 10.sp,
-                            color = if (isToday) Green500 else TextTertiary,
-                            lineHeight = 11.sp,
+                            fontSize = 12.sp,
+                            color = if (isToday) Green500 else TextDisabled,
+                            lineHeight = 13.sp,
                         )
                     }
 
@@ -204,7 +233,7 @@ fun CalendarScreen() {
                     ActivitySlot(
                         type = mornType,
                         isSkipped = skipped.contains(mornKey),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
                         onTap = {
                             skipped = if (mornType != null) {
                                 if (skipped.contains(mornKey)) skipped - mornKey else skipped + mornKey
@@ -216,7 +245,7 @@ fun CalendarScreen() {
                     ActivitySlot(
                         type = evType,
                         isSkipped = skipped.contains(evKey),
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
                         onTap = {
                             skipped = if (evType != null) {
                                 if (skipped.contains(evKey)) skipped - evKey else skipped + evKey
@@ -235,11 +264,11 @@ private fun NavButton(icon: ImageVector, onClick: () -> Unit) {
         modifier = Modifier
             .size(34.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(Surface3)
+            .background(Surface2)
             .clickableNoRipple(onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, null, tint = TextSecondary, modifier = Modifier.size(18.dp))
+        Icon(icon, null, tint = TextTertiary, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -253,9 +282,11 @@ private fun ActivitySlot(
     if (type == null) {
         Box(
             modifier = modifier
-                .height(48.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                .dashedBorder(
+                    color = Color.White.copy(alpha = 0.10f),
+                    cornerRadius = 10.dp,
+                ),
         )
         return
     }
@@ -264,40 +295,38 @@ private fun ActivitySlot(
     val (r, g, b) = cfg.rgb
     val baseColor = Color(r / 255f, g / 255f, b / 255f, 1f)
 
-    val bgColor = if (isSkipped) Color.White.copy(alpha = 0.03f) else baseColor.copy(alpha = 0.11f)
-    val borderColor = if (isSkipped) Color.White.copy(alpha = 0.07f) else baseColor.copy(alpha = 0.26f)
-    val contentColor = if (isSkipped) TextTertiary else baseColor
+    val bgColor = if (isSkipped) Color.White.copy(alpha = 0.02f) else baseColor.copy(alpha = 0.11f)
+    val borderColor = if (isSkipped) Color.White.copy(alpha = 0.05f) else baseColor.copy(alpha = 0.26f)
+    val contentColor = if (isSkipped) TextDisabled else baseColor
 
     Box(
         modifier = modifier
-            .height(48.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(bgColor)
             .border(1.dp, borderColor, RoundedCornerShape(10.dp))
-            .then(if (isSkipped) Modifier.then(Modifier) else Modifier)
             .clickableNoRipple(onTap)
             .padding(vertical = 8.dp, horizontal = 4.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
         ) {
             Icon(
                 imageVector = cfg.icon,
                 contentDescription = cfg.label,
-                tint = contentColor.let { if (isSkipped) it.copy(alpha = 0.5f) else it },
-                modifier = Modifier.size(16.dp),
+                tint = contentColor,
+                modifier = Modifier.size(20.dp),
             )
             Text(
                 text = cfg.label,
                 fontFamily = GeistFontFamily,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 10.sp,
-                color = contentColor.let { if (isSkipped) it.copy(alpha = 0.5f) else it },
+                fontSize = 12.sp,
+                color = contentColor,
                 textAlign = TextAlign.Center,
                 textDecoration = if (isSkipped) TextDecoration.LineThrough else null,
-                lineHeight = 10.sp,
+                lineHeight = 12.sp,
             )
         }
     }
