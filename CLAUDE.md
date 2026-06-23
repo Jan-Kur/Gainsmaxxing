@@ -162,3 +162,14 @@ As libraries get chosen and the data model grows, update the [Tech Stack](#tech-
 ## Important Rules
 - Before adding a library for new functionality, show me the options. If there's a clear best-fit winner, just name it and use it.
 - Keep the code clean and **easily testable**. Deep modules — hide complex logic behind simple interfaces. Pure logic stays in `domain/` with unit tests.
+
+## Known Gaps / Next Up
+Keep this section current. At the end of every session, replace stale items with whatever is now the actual next thing to do. A future session should be able to read this and know exactly where work left off.
+
+As of the initial UI implementation:
+- **MVVM not wired:** all state lives in `remember`/`rememberSaveable` directly in Composables. Move to ViewModels per the architecture rule — Composables must be stateless.
+- **Room not wired:** no database entities, DAOs, or repositories exist yet. Exercise history shows an empty state placeholder.
+- **Active sets not persisted:** logged sets in the active workout are lost on process death.
+- **Hardcoded data throughout:** PRs, bodyweight points, sleep data, and the workout split are all static. These need to come from Room via repositories.
+- **Strava not integrated:** running PRs are placeholder values; OAuth + Retrofit layer for Strava is not started.
+- **Settings actions are no-ops:** weight unit toggle, notifications toggle, and Export Data button have no backing logic.

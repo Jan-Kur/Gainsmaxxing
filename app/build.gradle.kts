@@ -56,8 +56,8 @@ dependencies {
 
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
 
-    // TODO: swap for Lucide when artifact available
-    implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.compose.ui:ui-text-google-fonts")
+    implementation("com.composables:icons-lucide:1.1.0")
 
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.moshi:moshi-kotlin:1.15.2")
