@@ -71,7 +71,6 @@ import com.gainsmaxxing.ui.theme.GeistFontFamily
 import com.gainsmaxxing.ui.theme.GeistMonoFontFamily
 import com.gainsmaxxing.ui.theme.Green500
 import com.gainsmaxxing.ui.theme.Green700
-import com.gainsmaxxing.ui.theme.Red400
 import com.gainsmaxxing.ui.theme.SleepEnergised
 import com.gainsmaxxing.ui.theme.SleepNeutral
 import com.gainsmaxxing.ui.theme.SleepSleepy
@@ -107,21 +106,26 @@ private val runningPRs = listOf(
 
 private fun generateBwData(): List<BwPoint> {
     val today = LocalDate.now()
-    return (51 downTo 0).map { i ->
+    // Different shape than before: a shorter, recent ~30-week window with a
+    // small weight range, so the Y-axis auto-scale and the 1 kg tick step are
+    // exercised (vs. the wide 50-week / 2 kg-step range previously).
+    val n = 30
+    return (n - 1 downTo 0).map { i ->
         val date = today.minusWeeks(i.toLong())
-        val trend = 87.5f - ((51 - i).toFloat() / 51f) * 9.3f
-        val noise = Math.sin(i * 2.31) * 0.6 + Math.sin(i * 0.73) * 0.42
+        val trend = 73.3f + ((n - 1 - i).toFloat() / (n - 1)) * 3.1f
+        val noise = Math.sin(i * 1.97) * 0.35 + Math.sin(i * 0.61) * 0.24
         BwPoint(date, ((trend + noise) * 10).roundToInt() / 10f)
     }
 }
 
 private fun generateSleepData(): List<SleepEntry> {
     val today = LocalDate.now()
+    // Different shape than before: hits both extremes — values above the 9h
+    // axis top (to test the bar clamp) and down at 4h — with a fuller energy mix.
     return (29 downTo 0).map { i ->
         val date = today.minusDays(i.toLong())
-        val h = maxOf(5f, minOf(9.5f,
-            ((7.1 + Math.sin(i * 0.53) * 1.1 + Math.sin(i * 1.73) * 0.42) * 2).roundToInt() / 2f
-        ))
+        val raw = 6.8 + Math.sin(i * 0.41) * 1.9 + Math.sin(i * 1.27) * 0.8
+        val h = (raw * 2).roundToInt() / 2f
         val energy = when {
             h < 6.5f -> "Sleepy"
             h > 7.8f -> "Energised"
@@ -362,10 +366,11 @@ private fun BodyweightCard(
     onDismiss: () -> Unit,
 ) {
     val current = data.last().weight
-    val prev = data[data.size - 2].weight
-    val delta = current - prev
+    // Change across the whole visible window, so the label matches the trend
+    // the chart shows (week-over-week is too noisy to be meaningful).
+    val delta = current - data.first().weight
     val deltaStr = (if (delta >= 0) "+" else "") + "%.1f kg".format(Locale.ROOT, delta)
-    val deltaColor = if (delta <= 0) Green500 else Red400
+    val deltaColor = Green500
 
     Column(
         modifier = Modifier
@@ -561,10 +566,12 @@ private fun BodyweightCard(
                     }
                 }
 
-                // Month labels
+                // Month labels: one per month, centred on that month's span and
+                // allowed to overflow (so the first/last month never clips).
                 Spacer(Modifier.height(6.dp))
-                Box(modifier = Modifier.fillMaxWidth().height(16.dp)) {
-                    val monthGroups = mutableMapOf<String, IntRange>()
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth().height(16.dp)) {
+                    val totalWidth = maxWidth
+                    val monthGroups = LinkedHashMap<String, IntRange>()
                     data.forEachIndexed { i, pt ->
                         val key = "${pt.date.year}-${pt.date.monthValue}"
                         val existing = monthGroups[key]
@@ -575,8 +582,10 @@ private fun BodyweightCard(
                         val label = data[range.first].date.month.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH)
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth(centerFrac.coerceAtMost(0.99f))
-                                .fillMaxHeight(),
+                                .align(Alignment.TopStart)
+                                .offset(x = totalWidth * centerFrac)
+                                .width(0.dp)
+                                .wrapContentWidth(unbounded = true),
                         ) {
                             Text(
                                 text = label,
@@ -584,7 +593,8 @@ private fun BodyweightCard(
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 9.sp,
                                 color = TextTertiary,
-                                modifier = Modifier.align(Alignment.TopEnd),
+                                maxLines = 1,
+                                softWrap = false,
                             )
                         }
                     }
@@ -661,7 +671,7 @@ private fun SleepCard(
                         verticalAlignment = Alignment.Bottom,
                     ) {
                         data.forEachIndexed { i, entry ->
-                            val heightFrac = maxOf(0f, (entry.hours - scaleMin) / span)
+                            val heightFrac = ((entry.hours - scaleMin) / span).coerceIn(0f, 1f)
                             val barColor = when (entry.energy) {
                                 "Sleepy" -> SleepSleepy
                                 "Neutral" -> SleepNeutral
@@ -715,20 +725,36 @@ private fun SleepCard(
                     }
                 }
 
-                // X-axis labels
+                // X-axis labels: inset from the edges and evenly spaced, each
+                // centred on its bar (so they never clip at the chart ends).
                 Spacer(Modifier.height(5.dp))
-                Box(modifier = Modifier.fillMaxWidth().height(18.dp)) {
-                    data.filterIndexed { i, _ -> i % 5 == 0 }.forEach { entry ->
-                        val origIdx = data.indexOf(entry)
-                        val xFrac = (origIdx + 0.5f) / data.size
-                        Box(modifier = Modifier.fillMaxWidth(xFrac.coerceAtMost(0.99f)).fillMaxHeight()) {
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth().height(14.dp)) {
+                    val totalWidth = maxWidth
+                    val n = data.size
+                    val labelCount = 5
+                    val firstIdx = 3
+                    val lastIdx = n - 4
+                    val indices = (0 until labelCount)
+                        .map { k -> (firstIdx + (lastIdx - firstIdx) * k / (labelCount - 1f)).roundToInt() }
+                        .distinct()
+                    indices.forEach { idx ->
+                        val entry = data[idx]
+                        val centerFrac = (idx + 0.5f) / n
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .offset(x = totalWidth * centerFrac)
+                                .width(0.dp)
+                                .wrapContentWidth(unbounded = true),
+                        ) {
                             Text(
                                 text = "${entry.date.dayOfMonth} ${entry.date.month.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH)}",
                                 fontFamily = GeistFontFamily,
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 9.sp,
                                 color = TextTertiary,
-                                modifier = Modifier.align(Alignment.TopEnd),
+                                maxLines = 1,
+                                softWrap = false,
                             )
                         }
                     }
