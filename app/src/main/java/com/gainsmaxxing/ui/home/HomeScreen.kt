@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -54,12 +55,9 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.gainsmaxxing.ui.components.ChartTooltip
 import com.gainsmaxxing.ui.components.clickableNoRipple
 import com.gainsmaxxing.ui.home.SettingsSheet
@@ -67,8 +65,12 @@ import com.gainsmaxxing.ui.theme.Amber500
 import com.gainsmaxxing.ui.theme.BgBase
 import com.gainsmaxxing.ui.theme.Blue500
 import com.gainsmaxxing.ui.theme.BorderSubtle
-import com.gainsmaxxing.ui.theme.GeistFontFamily
-import com.gainsmaxxing.ui.theme.GeistMonoFontFamily
+import com.gainsmaxxing.ui.theme.caption
+import com.gainsmaxxing.ui.theme.captionEmphasis
+import com.gainsmaxxing.ui.theme.labelLargeCaps
+import com.gainsmaxxing.ui.theme.monoBodyEmphasis
+import com.gainsmaxxing.ui.theme.monoLabel
+import com.gainsmaxxing.ui.theme.monoTitle
 import com.gainsmaxxing.ui.theme.Green500
 import com.gainsmaxxing.ui.theme.Green700
 import com.gainsmaxxing.ui.theme.SleepEnergised
@@ -158,21 +160,16 @@ fun HomeScreen() {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
                         text = greeting,
-                        fontFamily = GeistFontFamily,
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.bodySmall,
                         color = TextTertiary,
                     )
                     Text(
                         text = "Jan",
-                        fontFamily = GeistMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 28.sp,
+                        style = MaterialTheme.typography.headlineMedium,
                         color = TextPrimary,
-                        letterSpacing = (-0.56).sp,
-                        lineHeight = 30.sp,
                     )
                 }
                 Box(
@@ -185,9 +182,7 @@ fun HomeScreen() {
                 ) {
                     Text(
                         text = "J",
-                        fontFamily = GeistMonoFontFamily,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
+                        style = MaterialTheme.typography.titleLarge,
                         color = Color.White,
                     )
                 }
@@ -229,9 +224,7 @@ fun HomeScreen() {
                             ) {
                                 Text(
                                     text = label,
-                                    fontFamily = GeistFontFamily,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 14.sp,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = if (active) TextPrimary else TextTertiary,
                                 )
                             }
@@ -296,10 +289,7 @@ fun HomeScreen() {
 private fun SectionLabel(text: String) {
     Text(
         text = text.uppercase(),
-        fontFamily = GeistFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 11.sp,
-        letterSpacing = 1.32.sp,
+        style = MaterialTheme.typography.labelMedium,
         color = TextTertiary,
     )
 }
@@ -315,29 +305,21 @@ private fun PrCard(pr: PrEntry) {
     ) {
         Text(
             text = pr.exercise.uppercase(),
-            fontFamily = GeistFontFamily,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 10.sp,
-            letterSpacing = 1.0.sp,
+            style = MaterialTheme.typography.labelLargeCaps,
             color = TextTertiary,
         )
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.Bottom) {
             Text(
                 text = pr.value,
-                fontFamily = GeistMonoFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
-                letterSpacing = (-0.48).sp,
+                style = MaterialTheme.typography.headlineSmall,
                 color = TextPrimary,
                 modifier = Modifier.alignByBaseline(),
             )
             Spacer(Modifier.width(4.dp))
             Text(
                 text = pr.unit,
-                fontFamily = GeistMonoFontFamily,
-                fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.monoLabel,
                 color = TextTertiary,
                 modifier = Modifier.alignByBaseline(),
             )
@@ -350,9 +332,7 @@ private fun PrCard(pr: PrEntry) {
         }
         Text(
             text = pr.delta,
-            fontFamily = GeistFontFamily,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 12.sp,
+            style = MaterialTheme.typography.labelLarge,
             color = deltaColor,
         )
     }
@@ -389,28 +369,21 @@ private fun BodyweightCard(
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
                     text = "%.1f".format(Locale.ROOT, current),
-                    fontFamily = GeistMonoFontFamily,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 36.sp,
-                    letterSpacing = (-1.08).sp,
-                    lineHeight = 36.sp,
+                    style = MaterialTheme.typography.displaySmall,
                     color = TextPrimary,
                     modifier = Modifier.alignByBaseline(),
                 )
                 Spacer(Modifier.width(5.dp))
                 Text(
                     text = "kg",
-                    fontFamily = GeistMonoFontFamily,
-                    fontSize = 15.sp,
+                    style = MaterialTheme.typography.monoTitle,
                     color = TextTertiary,
                     modifier = Modifier.alignByBaseline(),
                 )
             }
             Text(
                 text = deltaStr,
-                fontFamily = GeistFontFamily,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.labelLarge,
                 color = deltaColor,
             )
         }
@@ -441,9 +414,7 @@ private fun BodyweightCard(
                     val topPx = with(density) { chartHeightDp.toPx() * topFrac }
                     Text(
                         text = "${tick.toInt()}",
-                        fontFamily = GeistFontFamily,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 9.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         color = TextTertiary,
                         modifier = Modifier
                             .offset { IntOffset(0, (topPx - 8.dp.toPx()).roundToInt()) },
@@ -558,8 +529,8 @@ private fun BodyweightCard(
                                     .padding(horizontal = 10.dp, vertical = 6.dp),
                             ) {
                                 Column {
-                                    Text(tooltipDate, fontFamily = GeistFontFamily, fontWeight = FontWeight.Medium, fontSize = 11.sp, color = TextTertiary)
-                                    Text(tooltipWeight, fontFamily = GeistMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)
+                                    Text(tooltipDate, style = MaterialTheme.typography.caption, color = TextTertiary)
+                                    Text(tooltipWeight, style = MaterialTheme.typography.monoBodyEmphasis, color = TextPrimary)
                                 }
                             }
                         }
@@ -589,9 +560,7 @@ private fun BodyweightCard(
                         ) {
                             Text(
                                 text = label,
-                                fontFamily = GeistFontFamily,
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 9.sp,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = TextTertiary,
                                 maxLines = 1,
                                 softWrap = false,
@@ -635,9 +604,7 @@ private fun SleepCard(
                     val topPx = with(density) { chartHeightDp.toPx() * topFrac }
                     Text(
                         text = "${h.toInt()}h",
-                        fontFamily = GeistFontFamily,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 9.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         color = TextTertiary,
                         modifier = Modifier
                             .offset { IntOffset(0, (topPx - 8.dp.toPx()).roundToInt()) },
@@ -711,14 +678,14 @@ private fun SleepCard(
                             ) {
                                 Column {
                                     val label = "${entry.date.dayOfMonth} ${entry.date.month.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH)}"
-                                    Text(label, fontFamily = GeistFontFamily, fontWeight = FontWeight.Medium, fontSize = 11.sp, color = TextTertiary)
-                                    Text("%.1f h".format(entry.hours), fontFamily = GeistMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextPrimary)
+                                    Text(label, style = MaterialTheme.typography.caption, color = TextTertiary)
+                                    Text("%.1f h".format(entry.hours), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
                                     val energyColor = when (entry.energy) {
                                         "Sleepy" -> Color(0xFF6BF5AD).copy(alpha = 0.5f)
                                         "Neutral" -> Green500.copy(alpha = 0.7f)
                                         else -> Green500
                                     }
-                                    Text(entry.energy, fontFamily = GeistFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, color = energyColor)
+                                    Text(entry.energy, style = MaterialTheme.typography.captionEmphasis, color = energyColor)
                                 }
                             }
                         }
@@ -749,9 +716,7 @@ private fun SleepCard(
                         ) {
                             Text(
                                 text = "${entry.date.dayOfMonth} ${entry.date.month.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH)}",
-                                fontFamily = GeistFontFamily,
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 9.sp,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = TextTertiary,
                                 maxLines = 1,
                                 softWrap = false,
@@ -768,7 +733,7 @@ private fun SleepCard(
             listOf("Sleepy" to SleepSleepy, "Neutral" to SleepNeutral, "Energised" to SleepEnergised).forEach { (label, color) ->
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     Box(modifier = Modifier.size(7.dp).clip(CircleShape).background(color))
-                    Text(label, fontFamily = GeistFontFamily, fontWeight = FontWeight.Medium, fontSize = 11.sp, color = TextTertiary)
+                    Text(label, style = MaterialTheme.typography.caption, color = TextTertiary)
                 }
             }
         }

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,12 +35,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.ChevronLeft
 import com.composables.icons.lucide.ChevronRight
 import com.composables.icons.lucide.Dumbbell
@@ -52,9 +51,8 @@ import com.composables.icons.lucide.Waves
 import com.composables.icons.lucide.Zap
 import com.gainsmaxxing.ui.components.clickableNoRipple
 import com.gainsmaxxing.ui.theme.BgBase
-import com.gainsmaxxing.ui.theme.GeistFontFamily
-import com.gainsmaxxing.ui.theme.GeistMonoFontFamily
 import com.gainsmaxxing.ui.theme.Green500
+import com.gainsmaxxing.ui.theme.monoSmall
 import com.gainsmaxxing.ui.theme.Surface2
 import com.gainsmaxxing.ui.theme.TextDisabled
 import com.gainsmaxxing.ui.theme.TextSecondary
@@ -140,11 +138,8 @@ fun CalendarScreen() {
             NavButton(icon = Lucide.ChevronLeft) { weekOffset-- }
             Text(
                 text = weekLabel,
-                fontFamily = GeistFontFamily,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 15.sp,
+                style = MaterialTheme.typography.titleSmall,
                 color = TextSecondary,
-                letterSpacing = 0.13.sp,
             )
             NavButton(icon = Lucide.ChevronRight) { weekOffset++ }
         }
@@ -158,20 +153,14 @@ fun CalendarScreen() {
                 "MORNING",
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
-                fontFamily = GeistFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.sp,
-                letterSpacing = 1.08.sp,
+                style = MaterialTheme.typography.labelMedium,
                 color = TextTertiary,
             )
             Text(
                 "EVENING",
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
-                fontFamily = GeistFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.sp,
-                letterSpacing = 1.08.sp,
+                style = MaterialTheme.typography.labelMedium,
                 color = TextTertiary,
             )
         }
@@ -213,19 +202,13 @@ fun CalendarScreen() {
                     ) {
                         Text(
                             dayNames[dayIdx],
-                            fontFamily = GeistFontFamily,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 13.sp,
+                            style = MaterialTheme.typography.bodySmall,
                             color = if (isToday) Green500 else TextTertiary,
-                            lineHeight = 13.sp,
                         )
                         Text(
                             "${date.dayOfMonth}",
-                            fontFamily = GeistMonoFontFamily,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.monoSmall,
                             color = if (isToday) Green500 else TextDisabled,
-                            lineHeight = 13.sp,
                         )
                     }
 
@@ -320,13 +303,10 @@ private fun ActivitySlot(
             )
             Text(
                 text = cfg.label,
-                fontFamily = GeistFontFamily,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.labelLarge,
                 color = contentColor,
                 textAlign = TextAlign.Center,
                 textDecoration = if (isSkipped) TextDecoration.LineThrough else null,
-                lineHeight = 12.sp,
             )
         }
     }

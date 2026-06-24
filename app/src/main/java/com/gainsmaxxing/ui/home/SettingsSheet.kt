@@ -2,6 +2,7 @@ package com.gainsmaxxing.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,9 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.ArrowLeft
 import com.composables.icons.lucide.Bell
 import com.composables.icons.lucide.CalendarDays
@@ -46,15 +46,15 @@ import com.gainsmaxxing.ui.theme.Amber500
 import com.gainsmaxxing.ui.theme.BgBase
 import com.gainsmaxxing.ui.theme.Blue500
 import com.gainsmaxxing.ui.theme.BorderSubtle
-import com.gainsmaxxing.ui.theme.GeistFontFamily
-import com.gainsmaxxing.ui.theme.GeistMonoFontFamily
 import com.gainsmaxxing.ui.theme.Green500
 import com.gainsmaxxing.ui.theme.Green700
 import com.gainsmaxxing.ui.theme.Surface1
-import com.gainsmaxxing.ui.theme.Surface3
 import com.gainsmaxxing.ui.theme.TextPrimary
 import com.gainsmaxxing.ui.theme.TextSecondary
 import com.gainsmaxxing.ui.theme.TextTertiary
+import com.gainsmaxxing.ui.theme.caption
+import com.gainsmaxxing.ui.theme.monoBodySmall
+import com.gainsmaxxing.ui.theme.screenTitle
 
 @Composable
 fun SettingsSheet(onClose: () -> Unit) {
@@ -86,12 +86,9 @@ fun SettingsSheet(onClose: () -> Unit) {
             }
             Spacer(Modifier.width(12.dp))
             Text(
-                "Settings",
-                fontFamily = GeistMonoFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
+                text = "Settings",
+                style = MaterialTheme.typography.screenTitle,
                 color = TextPrimary,
-                letterSpacing = (-0.18).sp,
             )
         }
 
@@ -119,12 +116,24 @@ fun SettingsSheet(onClose: () -> Unit) {
                         .background(Brush.linearGradient(listOf(Green500, Green700))),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("J", fontFamily = GeistMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                    Text(
+                        text = "J",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color.White,
+                    )
                 }
                 Spacer(Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Jan", fontFamily = GeistFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = TextPrimary)
-                    Text("Edit profile", fontFamily = GeistFontFamily, fontWeight = FontWeight.Medium, fontSize = 12.sp, color = TextTertiary)
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "Jan",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = TextPrimary,
+                    )
+                    Text(
+                        text = "Edit profile",
+                        style = MaterialTheme.typography.caption,
+                        color = TextTertiary,
+                    )
                 }
                 Icon(Lucide.ChevronRight, null, tint = TextTertiary, modifier = Modifier.size(16.dp))
             }
@@ -172,8 +181,17 @@ fun SettingsSheet(onClose: () -> Unit) {
                         Icon(Lucide.Scale, null, tint = Amber500, modifier = Modifier.size(15.dp))
                     }
                     Spacer(Modifier.width(12.dp))
-                    Text("Weight Unit", fontFamily = GeistFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = TextPrimary, modifier = Modifier.weight(1f))
-                    Text(weightUnit, fontFamily = GeistMonoFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = TextTertiary)
+                    Text(
+                        text = "Weight Unit",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextPrimary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = weightUnit,
+                        style = MaterialTheme.typography.monoBodySmall,
+                        color = TextTertiary,
+                    )
                     Spacer(Modifier.width(6.dp))
                     Icon(Lucide.ChevronRight, null, tint = TextTertiary, modifier = Modifier.size(15.dp))
                 }
@@ -197,8 +215,12 @@ fun SettingsSheet(onClose: () -> Unit) {
                         Icon(Lucide.Bell, null, tint = TextSecondary, modifier = Modifier.size(15.dp))
                     }
                     Spacer(Modifier.width(12.dp))
-                    Text("Notifications", fontFamily = GeistFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = TextPrimary, modifier = Modifier.weight(1f))
-                    // Custom toggle
+                    Text(
+                        text = "Notifications",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextPrimary,
+                        modifier = Modifier.weight(1f),
+                    )
                     ToggleSwitch(on = notificationsOn, onClick = { notificationsOn = !notificationsOn })
                 }
             }
@@ -223,10 +245,7 @@ fun SettingsSheet(onClose: () -> Unit) {
 private fun SettingsSectionLabel(text: String) {
     Text(
         text = text.uppercase(),
-        fontFamily = GeistFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 11.sp,
-        letterSpacing = 1.32.sp,
+        style = MaterialTheme.typography.labelMedium,
         color = TextTertiary,
         modifier = Modifier.padding(horizontal = 4.dp),
     )
@@ -248,7 +267,12 @@ private fun SettingsRow(icon: ImageVector, iconBg: Color, iconTint: Color, label
             Icon(icon, null, tint = iconTint, modifier = Modifier.size(15.dp))
         }
         Spacer(Modifier.width(12.dp))
-        Text(label, fontFamily = GeistFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = TextPrimary, modifier = Modifier.weight(1f))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextPrimary,
+            modifier = Modifier.weight(1f),
+        )
         Icon(Lucide.ChevronRight, null, tint = TextTertiary, modifier = Modifier.size(15.dp))
     }
 }
