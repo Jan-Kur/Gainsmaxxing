@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -30,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -53,7 +55,6 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -68,17 +69,22 @@ import com.composables.icons.lucide.X
 import com.gainsmaxxing.ui.components.clickableNoRipple
 import com.gainsmaxxing.ui.theme.Amber500
 import com.gainsmaxxing.ui.theme.BgBase
+import com.gainsmaxxing.ui.theme.BorderDefault
 import com.gainsmaxxing.ui.theme.BorderSubtle
-import com.gainsmaxxing.ui.theme.GeistFontFamily
-import com.gainsmaxxing.ui.theme.GeistMonoFontFamily
 import com.gainsmaxxing.ui.theme.Green500
 import com.gainsmaxxing.ui.theme.Surface1
 import com.gainsmaxxing.ui.theme.Surface3
+import com.gainsmaxxing.ui.theme.TextDisabled
 import com.gainsmaxxing.ui.theme.TextPrimary
 import com.gainsmaxxing.ui.theme.TextSecondary
 import com.gainsmaxxing.ui.theme.TextTertiary
+import com.gainsmaxxing.ui.theme.caption
+import com.gainsmaxxing.ui.theme.labelLargeCaps
+import com.gainsmaxxing.ui.theme.monoBodyEmphasis
+import com.gainsmaxxing.ui.theme.monoSmall
+import com.gainsmaxxing.ui.theme.screenTitle
 import java.time.LocalDate
-import java.time.format.TextStyle
+import java.time.format.TextStyle as JTextStyle
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -156,54 +162,25 @@ fun WorkoutScreen() {
             ) {
                 (0..6).forEach { dayIdx ->
                     val dayData = split[dayIdx]
-                    val isSelected = selectedDay == dayIdx
                     val typeLabel = when {
-                        dayData == null -> "REST"
-                        else -> dayData.first.split(" ").firstOrNull() ?: dayData.first
+                        dayData == null -> ""
+                        else -> (dayData.first.split(" ").firstOrNull() ?: dayData.first).uppercase()
                     }
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (isSelected) Surface3 else Color.Transparent)
-                            .border(
-                                1.dp,
-                                if (isSelected) Green500.copy(alpha = 0.3f) else Color.Transparent,
-                                RoundedCornerShape(8.dp),
-                            )
-                            .clickableNoRipple { selectedDay = dayIdx }
-                            .padding(vertical = 6.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text(
-                            dayNames[dayIdx].uppercase(),
-                            fontFamily = GeistFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 9.sp,
-                            color = if (isSelected) Green500 else TextTertiary,
-                            letterSpacing = 0.9.sp,
-                        )
-                        Text(
-                            typeLabel.uppercase(),
-                            fontFamily = GeistFontFamily,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 7.sp,
-                            color = if (isSelected) Green500.copy(alpha = 0.7f) else TextTertiary.copy(alpha = 0.6f),
-                            letterSpacing = 0.5.sp,
-                        )
-                    }
+                    WeekdayButton(
+                        dayLabel = dayNames[dayIdx],
+                        typeLabel = typeLabel,
+                        isSelected = selectedDay == dayIdx,
+                        onClick = { selectedDay = dayIdx },
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
 
             // Workout name
             Text(
                 text = workoutName,
-                fontFamily = GeistMonoFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 26.sp,
+                style = MaterialTheme.typography.headlineMedium,
                 color = TextPrimary,
-                letterSpacing = (-0.52).sp,
-                lineHeight = 28.sp,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
             )
 
@@ -222,7 +199,11 @@ fun WorkoutScreen() {
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
                         Icon(Lucide.Moon, null, tint = TextTertiary.copy(alpha = 0.5f), modifier = Modifier.size(32.dp))
-                        Text("Rest day — recover well.", fontFamily = GeistFontFamily, fontWeight = FontWeight.Medium, fontSize = 14.sp, color = TextTertiary)
+                        Text(
+                            "Rest day — recover well.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextTertiary,
+                        )
                     }
                 } else {
                     exercises.forEach { ex ->
@@ -268,19 +249,13 @@ fun WorkoutScreen() {
                     Column {
                         Text(
                             "ACTIVE WORKOUT",
-                            fontFamily = GeistFontFamily,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 10.sp,
-                            letterSpacing = 1.2.sp,
+                            style = MaterialTheme.typography.labelMedium,
                             color = TextTertiary,
                         )
                         Text(
                             workoutName,
-                            fontFamily = GeistMonoFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
+                            style = MaterialTheme.typography.screenTitle,
                             color = TextPrimary,
-                            letterSpacing = (-0.4).sp,
                         )
                     }
                     Box(
@@ -364,7 +339,11 @@ fun WorkoutScreen() {
                         Icon(Lucide.ArrowLeft, null, tint = TextSecondary, modifier = Modifier.size(18.dp))
                     }
                     Spacer(Modifier.width(12.dp))
-                    Text(exName, fontFamily = GeistMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = TextPrimary, letterSpacing = (-0.18).sp)
+                    Text(
+                        exName,
+                        style = MaterialTheme.typography.screenTitle,
+                        color = TextPrimary,
+                    )
                 }
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
 
@@ -385,7 +364,11 @@ fun WorkoutScreen() {
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Icon(Lucide.Clock, null, tint = TextTertiary.copy(alpha = 0.4f), modifier = Modifier.size(28.dp))
-                        Text("No history yet", fontFamily = GeistFontFamily, fontWeight = FontWeight.Medium, fontSize = 13.sp, color = TextTertiary)
+                        Text(
+                            "No history yet",
+                            style = MaterialTheme.typography.caption,
+                            color = TextTertiary,
+                        )
                     }
                 }
             }
@@ -423,9 +406,7 @@ fun WorkoutScreen() {
             ) {
                 Text(
                     ex?.name ?: "",
-                    fontFamily = GeistFontFamily,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 15.sp,
+                    style = MaterialTheme.typography.titleSmall,
                     color = TextPrimary,
                     textAlign = TextAlign.Center,
                 )
@@ -458,7 +439,11 @@ fun WorkoutScreen() {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Warmup set", fontFamily = GeistFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = TextSecondary)
+                    Text(
+                        "Warmup set",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary,
+                    )
                     WarmupToggle(on = isWarmup, onClick = { isWarmup = !isWarmup })
                 }
                 Spacer(Modifier.height(28.dp))
@@ -479,10 +464,56 @@ fun WorkoutScreen() {
                         .clickableNoRipple { logSheetExId = null }
                         .padding(vertical = 10.dp),
                     textAlign = TextAlign.Center,
-                    fontFamily = GeistFontFamily,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 14.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = TextTertiary,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeekdayButton(
+    dayLabel: String,
+    typeLabel: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(12.dp)
+    val borderColor = if (isSelected) Green500 else BorderDefault
+    val dayColor = if (isSelected) Green500 else TextTertiary
+    val typeColor = if (isSelected) Green500 else TextDisabled
+
+    Box(
+        modifier = modifier
+            .aspectRatio(1f)
+            .clip(shape)
+            .background(Surface1)
+            .border(1.dp, borderColor, shape)
+            .clickableNoRipple(onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (typeLabel.isEmpty()) {
+            Text(
+                dayLabel,
+                style = MaterialTheme.typography.bodySmall,
+                color = dayColor,
+            )
+        } else {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    dayLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = dayColor,
+                )
+                Text(
+                    typeLabel,
+                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp),
+                    color = typeColor,
                 )
             }
         }
@@ -514,9 +545,7 @@ private fun ExerciseCard(
         ) {
             Text(
                 ex.name,
-                fontFamily = GeistFontFamily,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 15.sp,
+                style = MaterialTheme.typography.titleSmall,
                 color = TextPrimary,
                 modifier = Modifier.weight(1f),
             )
@@ -530,7 +559,11 @@ private fun ExerciseCard(
                             .clickableNoRipple(onLog)
                             .padding(horizontal = 10.dp, vertical = 5.dp),
                     ) {
-                        Text(logLabel, fontFamily = GeistFontFamily, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, color = Green500)
+                        Text(
+                            logLabel,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = Green500,
+                        )
                     }
                 }
                 Box(
@@ -550,9 +583,7 @@ private fun ExerciseCard(
         else "${ex.sets}×${ex.reps} · last ${if ((ex.refWeight * 10).roundToInt() % 10 == 0) "${ex.refWeight.toInt()}" else "%.1f".format(ex.refWeight)} kg"
         Text(
             refStr,
-            fontFamily = GeistFontFamily,
-            fontWeight = FontWeight.Medium,
-            fontSize = 12.sp,
+            style = MaterialTheme.typography.caption,
             color = TextTertiary,
         )
 
@@ -579,9 +610,7 @@ private fun ExerciseCard(
                     ) {
                         Text(
                             label,
-                            fontFamily = GeistMonoFontFamily,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.monoSmall,
                             color = if (s.isWarmup) TextTertiary else TextPrimary,
                         )
                         if (s.isPR) {
@@ -608,11 +637,8 @@ private fun WorkoutCtaButton(label: String, onClick: () -> Unit) {
     ) {
         Text(
             label,
-            fontFamily = GeistFontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 15.sp,
+            style = MaterialTheme.typography.titleSmall,
             color = Green500,
-            letterSpacing = 0.15.sp,
         )
     }
 }
@@ -622,10 +648,7 @@ private fun AdjustRow(label: String, display: String, onDec: () -> Unit, onInc: 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             label.uppercase(),
-            fontFamily = GeistFontFamily,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 10.sp,
-            letterSpacing = 1.0.sp,
+            style = MaterialTheme.typography.labelLargeCaps,
             color = TextTertiary,
         )
         Spacer(Modifier.height(4.dp))
@@ -636,11 +659,8 @@ private fun AdjustRow(label: String, display: String, onDec: () -> Unit, onInc: 
             AdjBtn("−", onDec)
             Text(
                 display,
-                fontFamily = GeistMonoFontFamily,
-                fontWeight = FontWeight.Bold,
-                fontSize = 32.sp,
+                style = MaterialTheme.typography.headlineLarge,
                 color = TextPrimary,
-                letterSpacing = (-0.64).sp,
                 modifier = Modifier.width(80.dp),
                 textAlign = TextAlign.Center,
             )
@@ -659,7 +679,11 @@ private fun AdjBtn(label: String, onClick: () -> Unit) {
             .clickableNoRipple(onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(label, fontFamily = GeistMonoFontFamily, fontWeight = FontWeight.Bold, fontSize = 24.sp, color = TextPrimary)
+        Text(
+            label,
+            style = MaterialTheme.typography.headlineSmall,
+            color = TextPrimary,
+        )
     }
 }
 
@@ -714,10 +738,7 @@ private fun HistoryChart(activePt: Int?, onPtClick: (Int) -> Unit) {
         Column {
             Text(
                 "EST. 1RM OVER TIME",
-                fontFamily = GeistFontFamily,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 9.sp,
-                letterSpacing = 1.0.sp,
+                style = MaterialTheme.typography.labelLargeCaps,
                 color = TextTertiary,
             )
             Spacer(Modifier.height(10.dp))
@@ -729,9 +750,7 @@ private fun HistoryChart(activePt: Int?, onPtClick: (Int) -> Unit) {
                         val topPx = with(density) { chartH.toPx() * frac }
                         Text(
                             "${tick.toInt()}",
-                            fontFamily = GeistFontFamily,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 9.sp,
+                            style = MaterialTheme.typography.labelSmall,
                             color = TextTertiary,
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
@@ -810,17 +829,13 @@ private fun HistoryChart(activePt: Int?, onPtClick: (Int) -> Unit) {
                             ) {
                                 Column {
                                     Text(
-                                        "${date.dayOfMonth} ${date.month.getDisplayName(TextStyle.SHORT, Locale.ENGLISH)}",
-                                        fontFamily = GeistFontFamily,
-                                        fontWeight = FontWeight.Medium,
-                                        fontSize = 11.sp,
+                                        "${date.dayOfMonth} ${date.month.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH)}",
+                                        style = MaterialTheme.typography.caption,
                                         color = TextTertiary,
                                     )
                                     Text(
                                         "${rm.roundToInt()} kg",
-                                        fontFamily = GeistMonoFontFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 14.sp,
+                                        style = MaterialTheme.typography.monoBodyEmphasis,
                                         color = TextPrimary,
                                     )
                                 }
