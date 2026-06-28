@@ -1,8 +1,5 @@
 package com.gainsmaxxing.ui.workout
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,6 +9,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -35,9 +33,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -45,6 +45,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -241,19 +243,8 @@ fun WorkoutScreen() {
             }
         }
 
-        // Active Workout sheet
-        AnimatedVisibility(
-            visible = showActiveWorkout,
-            enter = slideInVertically(initialOffsetY = { it }),
-            exit = slideOutVertically(targetOffsetY = { it }),
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(BgBase)
-                    .statusBarsPadding(),
-            ) {
+        if (showActiveWorkout) {
+            FullscreenWorkoutSheet(onDismissRequest = { showActiveWorkout = false }) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -270,7 +261,6 @@ fun WorkoutScreen() {
                         color = TextPrimary,
                     )
                 }
-                // Separator
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
 
                 Column(
@@ -308,22 +298,11 @@ fun WorkoutScreen() {
             }
         }
 
-        // Exercise History sheet
-        AnimatedVisibility(
-            visible = historyExId != null,
-            enter = slideInVertically(initialOffsetY = { it }),
-            exit = slideOutVertically(targetOffsetY = { it }),
-            modifier = Modifier.fillMaxSize(),
-        ) {
+        if (historyExId != null) {
             val exId = historyExId
             val exName = exercises.find { it.id == exId }?.name ?: (split.values.flatMap { it.second }.find { it.id == exId }?.name ?: "")
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(BgBase)
-                    .statusBarsPadding(),
-            ) {
+            FullscreenWorkoutSheet(onDismissRequest = { historyExId = null; activeHistoryPt = null }) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -475,6 +454,49 @@ fun WorkoutScreen() {
                 )
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FullscreenWorkoutSheet(
+    onDismissRequest: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val density = LocalDensity.current
+    val screenHeightPx = with(density) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
+    val dismissThresholdPx = screenHeightPx / 3f
+    var currentOffsetPx by remember { mutableFloatStateOf(0f) }
+
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { targetValue ->
+            targetValue != SheetValue.Hidden || currentOffsetPx >= dismissThresholdPx
+        },
+    )
+
+    LaunchedEffect(sheetState) {
+        snapshotFlow { runCatching { sheetState.requireOffset() }.getOrNull() }
+            .collect { offset ->
+                if (offset != null) currentOffsetPx = offset
+            }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+        modifier = Modifier.fillMaxSize(),
+        shape = RoundedCornerShape(0.dp),
+        containerColor = BgBase,
+        dragHandle = null,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding(),
+            content = content,
+        )
     }
 }
 
