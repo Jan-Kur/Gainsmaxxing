@@ -184,3 +184,11 @@ val Typography.screenTitle: TextStyle
 /** SemiBold mono at body-small size — compact values (e.g. unit toggle). */
 val Typography.monoBodySmall: TextStyle
     get() = bodySmall.copy(fontFamily = GeistMonoFontFamily)
+
+/** Exercise card sets/reps/weight line. */
+val Typography.exerciseDetails: TextStyle
+    get() = bodyMedium.copy(fontWeight = FontWeight.Medium)
+
+/** Logged set pill value (weight × reps). */
+val Typography.setPill: TextStyle
+    get() = labelLarge.copy(fontFamily = GeistMonoFontFamily)

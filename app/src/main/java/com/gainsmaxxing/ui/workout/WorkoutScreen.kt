@@ -10,6 +10,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -60,18 +62,22 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.ArrowLeft
+import com.composables.icons.lucide.Check
 import com.composables.icons.lucide.Clock
 import com.composables.icons.lucide.Info
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Moon
 import com.composables.icons.lucide.Trophy
-import com.composables.icons.lucide.X
+import com.gainsmaxxing.ui.components.ChartTooltip
 import com.gainsmaxxing.ui.components.clickableNoRipple
-import com.gainsmaxxing.ui.theme.Amber500
 import com.gainsmaxxing.ui.theme.BgBase
 import com.gainsmaxxing.ui.theme.BorderDefault
 import com.gainsmaxxing.ui.theme.BorderSubtle
 import com.gainsmaxxing.ui.theme.Green500
+import com.gainsmaxxing.ui.theme.SleepSleepy
+import com.gainsmaxxing.ui.theme.SetPillPrBg
+import com.gainsmaxxing.ui.theme.SetPillPrBorder
+import com.gainsmaxxing.ui.theme.SetPillPrText
 import com.gainsmaxxing.ui.theme.Surface1
 import com.gainsmaxxing.ui.theme.Surface3
 import com.gainsmaxxing.ui.theme.TextDisabled
@@ -79,10 +85,11 @@ import com.gainsmaxxing.ui.theme.TextPrimary
 import com.gainsmaxxing.ui.theme.TextSecondary
 import com.gainsmaxxing.ui.theme.TextTertiary
 import com.gainsmaxxing.ui.theme.caption
+import com.gainsmaxxing.ui.theme.exerciseDetails
 import com.gainsmaxxing.ui.theme.labelLargeCaps
 import com.gainsmaxxing.ui.theme.monoBodyEmphasis
-import com.gainsmaxxing.ui.theme.monoSmall
 import com.gainsmaxxing.ui.theme.screenTitle
+import com.gainsmaxxing.ui.theme.setPill
 import java.time.LocalDate
 import java.time.format.TextStyle as JTextStyle
 import java.util.Locale
@@ -127,6 +134,14 @@ private val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 private fun todayDayIndex(): Int {
     val dow = LocalDate.now().dayOfWeek.value // 1=Mon..7=Sun
     return dow - 1 // 0=Mon..6=Sun
+}
+
+private fun formatWeight(w: Float): String =
+    if ((w * 10).roundToInt() % 10 == 0) "${w.toInt()}" else "%.1f".format(w)
+
+private fun exerciseDetailsLine(ex: ExerciseDef): String {
+    val weightPart = if (ex.unit == "BW") "+${ex.refWeight.toInt()} kg BW" else "${formatWeight(ex.refWeight)} kg"
+    return "${ex.sets} sets · ${ex.reps} reps · $weightPart"
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -190,7 +205,7 @@ fun WorkoutScreen() {
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (isRestDay) {
                     Column(
@@ -207,10 +222,9 @@ fun WorkoutScreen() {
                     }
                 } else {
                     exercises.forEach { ex ->
-                        val sets = activeSets[ex.id] ?: emptyList()
                         ExerciseCard(
                             ex = ex,
-                            sets = sets,
+                            sets = emptyList(),
                             onInfo = { historyExId = ex.id },
                         )
                     }
@@ -219,7 +233,9 @@ fun WorkoutScreen() {
 
             // Start Workout button
             if (!isRestDay) {
-                Box(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp).navigationBarsPadding()) {
+                Box(
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
+                ) {
                     WorkoutCtaButton("Start Workout") { showActiveWorkout = true }
                 }
             }
@@ -238,36 +254,21 @@ fun WorkoutScreen() {
                     .background(BgBase)
                     .statusBarsPadding(),
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
-                        .border(width = 0.dp, color = Color.Transparent, shape = RoundedCornerShape(0.dp)),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
                 ) {
-                    Column {
-                        Text(
-                            "ACTIVE WORKOUT",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = TextTertiary,
-                        )
-                        Text(
-                            workoutName,
-                            style = MaterialTheme.typography.screenTitle,
-                            color = TextPrimary,
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color.White.copy(alpha = 0.06f))
-                            .clickableNoRipple { showActiveWorkout = false },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Lucide.X, null, tint = TextSecondary, modifier = Modifier.size(18.dp))
-                    }
+                    Text(
+                        "ACTIVE WORKOUT",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextTertiary,
+                    )
+                    Text(
+                        workoutName,
+                        style = MaterialTheme.typography.screenTitle,
+                        color = TextPrimary,
+                    )
                 }
                 // Separator
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
@@ -277,14 +278,17 @@ fun WorkoutScreen() {
                         .weight(1f)
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 20.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     exercises.forEach { ex ->
                         val sets = activeSets[ex.id] ?: emptyList()
+                        val workingSetCount = sets.count { !it.isWarmup }
+                        val isDone = workingSetCount >= ex.sets
                         ExerciseCard(
                             ex = ex,
                             sets = sets,
-                            logLabel = "Log Set ${sets.count { !it.isWarmup } + 1}",
+                            isDone = isDone,
+                            logLabel = if (isDone) "Done" else "+ Set ${workingSetCount + 1}/${ex.sets}",
                             onLog = {
                                 logSheetExId = ex.id
                                 logWeight = ex.refWeight
@@ -297,9 +301,7 @@ fun WorkoutScreen() {
                 }
 
                 Box(
-                    modifier = Modifier
-                        .padding(horizontal = 20.dp, vertical = 12.dp)
-                        .navigationBarsPadding(),
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 24.dp),
                 ) {
                     WorkoutCtaButton("Finish Workout") { showActiveWorkout = false }
                 }
@@ -348,7 +350,11 @@ fun WorkoutScreen() {
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
 
                 // 1RM chart
-                HistoryChart(activeHistoryPt, { activeHistoryPt = if (activeHistoryPt == it) null else it })
+                HistoryChart(
+                    activePt = activeHistoryPt,
+                    onPtClick = { activeHistoryPt = if (activeHistoryPt == it) null else it },
+                    onDismiss = { activeHistoryPt = null },
+                )
 
                 // Session list
                 Column(
@@ -481,15 +487,16 @@ private fun WeekdayButton(
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(12.dp)
-    val borderColor = if (isSelected) Green500 else BorderDefault
+    val borderColor = if (isSelected) Green500.copy(alpha = 0.28f) else BorderDefault
     val dayColor = if (isSelected) Green500 else TextTertiary
     val typeColor = if (isSelected) Green500 else TextDisabled
+    val bgColor = if (isSelected) Green500.copy(alpha = 0.12f) else Surface1
 
     Box(
         modifier = modifier
             .aspectRatio(1f)
             .clip(shape)
-            .background(Surface1)
+            .background(bgColor)
             .border(1.dp, borderColor, shape)
             .clickableNoRipple(onClick),
         contentAlignment = Alignment.Center,
@@ -526,17 +533,18 @@ private fun ExerciseCard(
     ex: ExerciseDef,
     sets: List<SetEntry>,
     logLabel: String? = null,
+    isDone: Boolean = false,
     onLog: (() -> Unit)? = null,
     onInfo: () -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(Surface1)
-            .border(1.dp, BorderSubtle, RoundedCornerShape(14.dp))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp))
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -549,72 +557,121 @@ private fun ExerciseCard(
                 color = TextPrimary,
                 modifier = Modifier.weight(1f),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 if (logLabel != null && onLog != null) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Green500.copy(alpha = 0.12f))
-                            .border(1.dp, Green500.copy(alpha = 0.28f), RoundedCornerShape(8.dp))
-                            .clickableNoRipple(onLog)
-                            .padding(horizontal = 10.dp, vertical = 5.dp),
-                    ) {
-                        Text(
-                            logLabel,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = Green500,
-                        )
+                    if (isDone) {
+                        Row(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Surface3)
+                                .clickableNoRipple(onLog)
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Icon(Lucide.Check, null, tint = TextSecondary, modifier = Modifier.size(14.dp))
+                            Text(
+                                logLabel,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = TextSecondary,
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(SleepSleepy)
+                                .clickableNoRipple(onLog)
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        ) {
+                            Text(
+                                logLabel,
+                                style = MaterialTheme.typography.labelLarge,
+                                color = Green500,
+                            )
+                        }
                     }
                 }
-                Box(
+                Icon(
+                    Lucide.Info,
+                    contentDescription = "Exercise history",
+                    tint = TextTertiary,
                     modifier = Modifier
-                        .size(28.dp)
-                        .clip(RoundedCornerShape(7.dp))
-                        .background(Surface3)
+                        .size(18.dp)
                         .clickableNoRipple(onInfo),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Lucide.Info, null, tint = TextTertiary, modifier = Modifier.size(14.dp))
-                }
+                )
             }
         }
 
-        val refStr = if (ex.unit == "BW") "${ex.sets}×${ex.reps} · +${ex.refWeight.toInt()} kg BW"
-        else "${ex.sets}×${ex.reps} · last ${if ((ex.refWeight * 10).roundToInt() % 10 == 0) "${ex.refWeight.toInt()}" else "%.1f".format(ex.refWeight)} kg"
         Text(
-            refStr,
-            style = MaterialTheme.typography.caption,
+            exerciseDetailsLine(ex),
+            style = MaterialTheme.typography.exerciseDetails,
             color = TextTertiary,
+            modifier = Modifier.padding(top = 4.dp),
         )
 
         if (sets.isNotEmpty()) {
             FlowRow(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 sets.forEach { s ->
-                    val label = "${if ((s.weight * 10).roundToInt() % 10 == 0) "${s.weight.toInt()}" else "%.1f".format(s.weight)}×${s.reps}"
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(Surface3)
-                            .let {
-                                if (s.isPR) it.border(1.dp, Amber500.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
-                                else if (s.isWarmup) it.border(1.dp, TextTertiary.copy(alpha = 0.2f), RoundedCornerShape(20.dp))
-                                else it
+                    val label = "${formatWeight(s.weight)} x ${s.reps}"
+                    val pillShape = RoundedCornerShape(20.dp)
+                    when {
+                        s.isWarmup -> {
+                            Row(
+                                modifier = Modifier
+                                    .clip(pillShape)
+                                    .background(Surface3)
+                                    .border(1.dp, TextTertiary.copy(alpha = 0.2f), pillShape)
+                                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.setPill,
+                                    color = TextTertiary,
+                                )
                             }
-                            .padding(horizontal = 10.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text(
-                            label,
-                            style = MaterialTheme.typography.monoSmall,
-                            color = if (s.isWarmup) TextTertiary else TextPrimary,
-                        )
-                        if (s.isPR) {
-                            Icon(Lucide.Trophy, null, tint = Amber500, modifier = Modifier.size(10.dp))
+                        }
+                        s.isPR -> {
+                            Row(
+                                modifier = Modifier
+                                    .clip(pillShape)
+                                    .background(SetPillPrBg)
+                                    .border(1.dp, SetPillPrBorder, pillShape)
+                                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.setPill,
+                                    color = SetPillPrText,
+                                )
+                                Icon(Lucide.Trophy, null, tint = SetPillPrText, modifier = Modifier.size(11.dp))
+                            }
+                        }
+                        else -> {
+                            Row(
+                                modifier = Modifier
+                                    .clip(pillShape)
+                                    .background(Green500.copy(alpha = 0.12f))
+                                    .border(1.dp, Green500.copy(alpha = 0.28f), pillShape)
+                                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    label,
+                                    style = MaterialTheme.typography.setPill,
+                                    color = Green500,
+                                )
+                            }
                         }
                     }
                 }
@@ -705,8 +762,11 @@ private fun WarmupToggle(on: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun HistoryChart(activePt: Int?, onPtClick: (Int) -> Unit) {
-    // Synthetic 1RM data — ascending trend
+private fun HistoryChart(
+    activePt: Int?,
+    onPtClick: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
     val today = LocalDate.now()
     val pts = (11 downTo 0).map { i ->
         val date = today.minusWeeks(i.toLong())
@@ -714,63 +774,74 @@ private fun HistoryChart(activePt: Int?, onPtClick: (Int) -> Unit) {
         Pair(date, rm)
     }
 
-    val chartH = 90.dp
+    val chartHeightDp = 110.dp
     val minRm = pts.minOf { it.second }
     val maxRm = pts.maxOf { it.second }
     val pad = (maxRm - minRm) * 0.14f
     val yMin = minRm - pad
     val yMax = maxRm + pad
-    val tickVals = listOf(
-        (Math.floor(minRm / 10.0) * 10).toFloat(),
-        (Math.round((minRm + maxRm) / 2 / 10.0) * 10).toFloat(),
-        (Math.ceil(maxRm / 10.0) * 10).toFloat(),
-    ).distinct()
 
-    Box(
+    val tickStep = if (maxRm - minRm > 30) 20f else 10f
+    val tLow = (Math.ceil(minRm / tickStep.toDouble()) * tickStep).toFloat()
+    val tHigh = (Math.floor(maxRm / tickStep.toDouble()) * tickStep).toFloat()
+    val tMid = (Math.round((tLow + tHigh) / 2f / tickStep) * tickStep).toFloat()
+    val yTicks = if (tMid != tLow && tMid != tHigh) listOf(tHigh, tMid, tLow) else listOf(tHigh, tLow)
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 14.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(Surface1)
             .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp))
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } }
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
-        Column {
-            Text(
-                "EST. 1RM OVER TIME",
-                style = MaterialTheme.typography.labelLargeCaps,
-                color = TextTertiary,
-            )
-            Spacer(Modifier.height(10.dp))
-            Row(verticalAlignment = Alignment.Top) {
-                Box(modifier = Modifier.width(32.dp).height(chartH)) {
-                    tickVals.forEach { tick ->
-                        val frac = 1f - (tick - yMin) / (yMax - yMin)
-                        val density = LocalDensity.current
-                        val topPx = with(density) { chartH.toPx() * frac }
-                        Text(
-                            "${tick.toInt()}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = TextTertiary,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .offset { IntOffset(0, (topPx - 8.dp.toPx()).roundToInt()) },
-                        )
-                    }
+        Text(
+            "EST. 1RM OVER TIME",
+            style = MaterialTheme.typography.labelLargeCaps,
+            color = TextTertiary,
+        )
+        Spacer(Modifier.height(10.dp))
+
+        Row(verticalAlignment = Alignment.Top) {
+            Box(modifier = Modifier.wrapContentWidth().height(chartHeightDp)) {
+                yTicks.forEach { tick ->
+                    val topFrac = 1f - (tick - yMin) / (yMax - yMin)
+                    val density = LocalDensity.current
+                    val topPx = with(density) { chartHeightDp.toPx() * topFrac }
+                    Text(
+                        "${tick.toInt()}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextTertiary,
+                        modifier = Modifier
+                            .offset { IntOffset(0, (topPx - 8.dp.toPx()).roundToInt()) },
+                    )
                 }
-                Spacer(Modifier.width(8.dp))
-                Box(modifier = Modifier.weight(1f).height(chartH)) {
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth().height(chartHeightDp)) {
                     Canvas(
                         modifier = Modifier
                             .fillMaxSize()
-                            .pointerInput(pts) {
+                            .pointerInput(pts, yMin, yMax) {
+                                val touchSlop = 36.dp.toPx()
                                 detectTapGestures { offset ->
                                     val w = size.width.toFloat()
+                                    val h = size.height.toFloat()
                                     val nearest = pts.indices.minByOrNull { i ->
                                         val x = (i.toFloat() / (pts.size - 1)) * w
                                         Math.abs(offset.x - x)
                                     }
-                                    nearest?.let { onPtClick(it) }
+                                    val onPoint = nearest != null && run {
+                                        val x = (nearest.toFloat() / (pts.size - 1)) * w
+                                        val y = h - ((pts[nearest].second - yMin) / (yMax - yMin)) * h
+                                        Math.hypot((offset.x - x).toDouble(), (offset.y - y).toDouble()) <= touchSlop
+                                    }
+                                    if (onPoint) onPtClick(nearest!!) else onDismiss()
                                 }
                             },
                     ) {
@@ -780,8 +851,7 @@ private fun HistoryChart(activePt: Int?, onPtClick: (Int) -> Unit) {
                         fun toY(rm: Float) = h - ((rm - yMin) / (yMax - yMin)) * h
                         val coords = pts.indices.map { i -> Offset(toX(i), toY(pts[i].second)) }
 
-                        // Gridlines
-                        tickVals.forEach { tick ->
+                        yTicks.forEach { tick ->
                             drawLine(Color(0x0FFFFFFF), Offset(0f, toY(tick)), Offset(w, toY(tick)), 1.dp.toPx())
                         }
 
@@ -799,7 +869,14 @@ private fun HistoryChart(activePt: Int?, onPtClick: (Int) -> Unit) {
                             lineTo(0f, h)
                             close()
                         }
-                        drawPath(areaPath, Brush.verticalGradient(listOf(Green500.copy(alpha = 0.16f), Green500.copy(alpha = 0f))))
+                        drawPath(
+                            areaPath,
+                            Brush.verticalGradient(
+                                listOf(Green500.copy(alpha = 0.16f), Green500.copy(alpha = 0f)),
+                                startY = 0f,
+                                endY = h,
+                            ),
+                        )
                         drawPath(linePath, Green500, style = Stroke(1.8.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
 
                         coords.forEachIndexed { i, p ->
@@ -813,33 +890,63 @@ private fun HistoryChart(activePt: Int?, onPtClick: (Int) -> Unit) {
                         }
                     }
 
-                    // Tooltip
                     if (activePt != null && activePt in pts.indices) {
                         val (date, rm) = pts[activePt]
                         val xFrac = activePt.toFloat() / (pts.size - 1)
-                        Box(modifier = Modifier.fillMaxWidth(xFrac.coerceIn(0.05f, 0.85f)).fillMaxHeight()) {
+                        val yFrac = 1f - (rm - yMin) / (yMax - yMin)
+                        val dotXDp = maxWidth * xFrac
+                        val dotYDp = maxHeight * yFrac
+                        val tooltipDate = "${date.dayOfMonth} ${date.month.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH)}"
+                        val tooltipValue = "${rm.roundToInt()} kg"
+                        ChartTooltip(
+                            chartWidth = maxWidth,
+                            chartHeight = maxHeight,
+                            anchorX = dotXDp,
+                            anchorTop = dotYDp,
+                            topOverflow = 56.dp,
+                        ) {
                             Box(
                                 modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .offset(y = (-36).dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(Surface3)
                                     .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
                                     .padding(horizontal = 10.dp, vertical = 6.dp),
                             ) {
                                 Column {
-                                    Text(
-                                        "${date.dayOfMonth} ${date.month.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH)}",
-                                        style = MaterialTheme.typography.caption,
-                                        color = TextTertiary,
-                                    )
-                                    Text(
-                                        "${rm.roundToInt()} kg",
-                                        style = MaterialTheme.typography.monoBodyEmphasis,
-                                        color = TextPrimary,
-                                    )
+                                    Text(tooltipDate, style = MaterialTheme.typography.caption, color = TextTertiary)
+                                    Text(tooltipValue, style = MaterialTheme.typography.monoBodyEmphasis, color = TextPrimary)
                                 }
                             }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(6.dp))
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth().height(16.dp)) {
+                    val totalWidth = maxWidth
+                    val monthGroups = LinkedHashMap<String, IntRange>()
+                    pts.forEachIndexed { i, (date, _) ->
+                        val key = "${date.year}-${date.monthValue}"
+                        val existing = monthGroups[key]
+                        monthGroups[key] = if (existing == null) i..i else existing.first..i
+                    }
+                    monthGroups.forEach { (_, range) ->
+                        val centerFrac = (range.first + range.last).toFloat() / 2f / (pts.size - 1)
+                        val label = pts[range.first].first.month.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH)
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .offset(x = totalWidth * centerFrac)
+                                .width(0.dp)
+                                .wrapContentWidth(unbounded = true),
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextTertiary,
+                                maxLines = 1,
+                                softWrap = false,
+                            )
                         }
                     }
                 }

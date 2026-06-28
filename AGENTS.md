@@ -174,3 +174,23 @@ As of the initial UI implementation:
 - **Hardcoded data throughout:** PRs, bodyweight points, sleep data, and the workout split are all static. These need to come from Room via repositories.
 - **Strava not integrated:** running PRs are placeholder values; OAuth + Retrofit layer for Strava is not started.
 - **Settings actions are no-ops:** weight unit toggle, notifications toggle, and Export Data button have no backing logic.
+
+## Git Rules
+
+### Branch
+- Don't touch any files on the main branch. Always create a new branch or work on an existing one
+- Naming: feat/<short-desc>, fix/<short-desc>
+- Never commit directly to main or develop
+
+### Commits
+- Use Conventional Commits: feat:, fix:, refactor:, chore:, docs:
+- Keep commit messages under 72 characters, imperative mood
+- One logical change per commit — don't bundle unrelated changes
+
+### PR hygiene
+- Break huge tasks into smaller PRs, but a PR can be pretty large if focus on one thing
+- Never force push
+- Never amend a commit that has already been pushed
+
+### What requires my confirmation
+- git push (ask me before pushing; I'll determine if we are done or need more changes)
