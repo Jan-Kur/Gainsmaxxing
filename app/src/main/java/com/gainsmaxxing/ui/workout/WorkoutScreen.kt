@@ -29,6 +29,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -140,6 +143,8 @@ private fun todayDayIndex(): Int {
 
 private fun formatWeight(w: Float): String =
     if ((w * 10).roundToInt() % 10 == 0) "${w.toInt()}" else "%.1f".format(w)
+
+private val LogSetControlRowWidth = 240.dp
 
 private fun exerciseDetailsLine(ex: ExerciseDef): String {
     val weightPart = if (ex.unit == "BW") "+${ex.refWeight.toInt()} kg BW" else "${formatWeight(ex.refWeight)} kg"
@@ -418,7 +423,7 @@ fun WorkoutScreen() {
                 // Warmup toggle
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .width(LogSetControlRowWidth)
                         .clickableNoRipple { isWarmup = !isWarmup }
                         .padding(vertical = 0.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -732,7 +737,8 @@ private fun AdjustRow(label: String, display: String, onDec: () -> Unit, onInc: 
         )
         Spacer(Modifier.height(4.dp))
         Row(
-            horizontalArrangement = Arrangement.spacedBy(36.dp),
+            modifier = Modifier.width(LogSetControlRowWidth),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             AdjBtn("−", onDec)
@@ -768,8 +774,22 @@ private fun AdjBtn(label: String, onClick: () -> Unit) {
 
 @Composable
 private fun WarmupToggle(on: Boolean, onClick: () -> Unit) {
-    val trackColor = if (on) Green500.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.12f)
-    val knobColor = if (on) Green500 else TextTertiary
+    val trackColor by animateColorAsState(
+        targetValue = if (on) Green500.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.12f),
+        animationSpec = spring(),
+        label = "warmup_toggle_track",
+    )
+    val knobColor by animateColorAsState(
+        targetValue = if (on) Green500 else TextTertiary,
+        animationSpec = spring(),
+        label = "warmup_toggle_knob_color",
+    )
+    val knobOffset by animateDpAsState(
+        targetValue = if (on) 20.dp else 2.dp,
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 600f),
+        label = "warmup_toggle_knob_offset",
+    )
+
     Box(
         modifier = Modifier
             .width(44.dp)
@@ -777,9 +797,14 @@ private fun WarmupToggle(on: Boolean, onClick: () -> Unit) {
             .clip(CircleShape)
             .background(trackColor)
             .clickableNoRipple(onClick),
-        contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
-        Box(modifier = Modifier.padding(2.dp).size(22.dp).clip(CircleShape).background(knobColor))
+        Box(
+            modifier = Modifier
+                .offset(x = knobOffset, y = 2.dp)
+                .size(22.dp)
+                .clip(CircleShape)
+                .background(knobColor),
+        )
     }
 }
 
