@@ -188,9 +188,10 @@ As of the initial UI implementation:
 - One logical change per commit — don't bundle unrelated changes
 
 ### PR hygiene
-- Break huge tasks into smaller PRs, but a PR can be pretty large if focus on one thing
+- Break huge tasks into smaller PRs, but a PR can be pretty large if focused on one thing
 - Never force push
 - Never amend a commit that has already been pushed
+- Don't make draft PRs
 
 ### What requires my confirmation
 - git push (ask me before pushing; I'll determine if we are done or need more changes)
