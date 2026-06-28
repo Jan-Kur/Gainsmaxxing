@@ -141,16 +141,31 @@ private fun todayDayIndex(): Int {
     return dow - 1 // 0=Mon..6=Sun
 }
 
-private fun formatWeight(w: Float): String =
+/**
+     * Formats a weight for display.
+     *
+     * @param w The weight to format.
+     * @return The weight as an integer when the tenths digit is zero, or with one decimal place otherwise.
+     */
+    private fun formatWeight(w: Float): String =
     if ((w * 10).roundToInt() % 10 == 0) "${w.toInt()}" else "%.1f".format(w)
 
 private val LogSetControlRowWidth = 240.dp
 
+/**
+ * Builds the detail line for an exercise.
+ *
+ * @param ex The exercise to describe.
+ * @return A string containing the set count, rep count, and reference weight.
+ */
 private fun exerciseDetailsLine(ex: ExerciseDef): String {
     val weightPart = if (ex.unit == "BW") "+${ex.refWeight.toInt()} kg BW" else "${formatWeight(ex.refWeight)} kg"
     return "${ex.sets} sets · ${ex.reps} reps · $weightPart"
 }
 
+/**
+ * Displays the workout planner, active workout sheet, history view, and set logging controls.
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun WorkoutScreen() {
@@ -727,6 +742,14 @@ private fun WorkoutCtaButton(label: String, onClick: () -> Unit) {
     }
 }
 
+/**
+ * Shows a labeled value control with decrement and increment buttons.
+ *
+ * @param label The control label.
+ * @param display The value shown between the buttons.
+ * @param onDec Called when the decrement button is pressed.
+ * @param onInc Called when the increment button is pressed.
+ */
 @Composable
 private fun AdjustRow(label: String, display: String, onDec: () -> Unit, onInc: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -772,6 +795,12 @@ private fun AdjBtn(label: String, onClick: () -> Unit) {
     }
 }
 
+/**
+ * Renders a toggle switch for marking a set as warmup.
+ *
+ * @param on Whether the toggle is enabled.
+ * @param onClick Called when the toggle is tapped.
+ */
 @Composable
 private fun WarmupToggle(on: Boolean, onClick: () -> Unit) {
     val trackColor by animateColorAsState(
