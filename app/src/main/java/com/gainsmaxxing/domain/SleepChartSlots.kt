@@ -14,7 +14,7 @@ object SleepChartSlots {
             .associateBy { it.date }
 
         if (loggedByDate.isEmpty()) {
-            return List(SLOT_COUNT) { emptySlot(today) }
+            return (SLOT_COUNT - 1 downTo 0).map { offset -> emptySlot(today.minusDays(offset.toLong())) }
         }
 
         val firstLogDate = loggedByDate.keys.min()
