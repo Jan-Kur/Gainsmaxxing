@@ -57,10 +57,18 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.gainsmaxxing.ui.components.ChartTooltip
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Plus
+import com.gainsmaxxing.domain.SleepFormat
+import com.gainsmaxxing.domain.WeightFormat
+import com.gainsmaxxing.domain.model.BodyweightEntry
+import com.gainsmaxxing.domain.model.EnergyTag
+import com.gainsmaxxing.domain.model.SleepEntry
+import com.gainsmaxxing.domain.model.WeightUnit
 import com.gainsmaxxing.ui.components.clickableNoRipple
 import com.gainsmaxxing.ui.workout.SplitEditorScreen
 import com.gainsmaxxing.ui.theme.Amber500
@@ -85,75 +93,44 @@ import com.gainsmaxxing.ui.theme.Surface4
 import com.gainsmaxxing.ui.theme.TextPrimary
 import com.gainsmaxxing.ui.theme.TextSecondary
 import com.gainsmaxxing.ui.theme.TextTertiary
+import com.gainsmaxxing.ui.components.ChartTooltip
 import java.time.LocalDate
 import java.time.format.TextStyle as JTextStyle
 import java.util.Locale
 import kotlin.math.roundToInt
 
-data class PrEntry(val exercise: String, val value: String, val unit: String, val delta: String)
-data class BwPoint(val date: LocalDate, val weight: Float)
-data class SleepEntry(val date: LocalDate, val hours: Float, val energy: String)
 
-private val strengthPRs = listOf(
-    PrEntry("Bench Press", "102.5", "kg", "+2.5 kg"),
-    PrEntry("Deadlift", "180", "kg", "+5 kg"),
-    PrEntry("Back Squat", "140", "kg", "—"),
-    PrEntry("Overhead Press", "72.5", "kg", "+2.5 kg"),
-)
+private const val PrCardRowHeightDp = 105
+private const val PrGridRowGapDp = 10
 
-private val runningPRs = listOf(
-    PrEntry("5 km", "22:48", "min", "−0:31"),
-    PrEntry("10 km", "48:12", "min", "−1:20"),
-    PrEntry("Half Mar.", "1:52", "h:mm", "First"),
-    PrEntry("1 km", "4:02", "min", "−0:08"),
-)
-
-private fun generateBwData(): List<BwPoint> {
-    val today = LocalDate.now()
-    // Different shape than before: a shorter, recent ~30-week window with a
-    // small weight range, so the Y-axis auto-scale and the 1 kg tick step are
-    // exercised (vs. the wide 50-week / 2 kg-step range previously).
-    val n = 30
-    return (n - 1 downTo 0).map { i ->
-        val date = today.minusWeeks(i.toLong())
-        val trend = 73.3f + ((n - 1 - i).toFloat() / (n - 1)) * 3.1f
-        val noise = Math.sin(i * 1.97) * 0.35 + Math.sin(i * 0.61) * 0.24
-        BwPoint(date, ((trend + noise) * 10).roundToInt() / 10f)
-    }
-}
-
-private fun generateSleepData(): List<SleepEntry> {
-    val today = LocalDate.now()
-    // Different shape than before: hits both extremes — values above the 9h
-    // axis top (to test the bar clamp) and down at 4h — with a fuller energy mix.
-    return (29 downTo 0).map { i ->
-        val date = today.minusDays(i.toLong())
-        val raw = 6.8 + Math.sin(i * 0.41) * 1.9 + Math.sin(i * 1.27) * 0.8
-        val h = (raw * 2).roundToInt() / 2f
-        val energy = when {
-            h < 6.5f -> "Sleepy"
-            h > 7.8f -> "Energised"
-            else -> "Neutral"
-        }
-        SleepEntry(date, h, energy)
-    }
-}
+private fun prGridHeight(cardCount: Int) =
+    (PrCardRowHeightDp * ((cardCount + 1) / 2) +
+        PrGridRowGapDp * (((cardCount + 1) / 2) - 1).coerceAtLeast(0)).dp
 
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
-    val profile by viewModel.profile.collectAsStateWithLifecycle()
-    val bwData = remember { generateBwData() }
-    val sleepData = remember { generateSleepData() }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val showStrengthPrSettings by viewModel.showStrengthPrSettings.collectAsStateWithLifecycle()
+    val strengthPrSelection by viewModel.strengthPrSelection.collectAsStateWithLifecycle()
+    val profile = uiState.profile
+
     var prTab by rememberSaveable { mutableIntStateOf(0) }
     var activeBw by remember { mutableStateOf<Int?>(null) }
     var activeSleep by remember { mutableStateOf<Int?>(null) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showSplitEditor by rememberSaveable { mutableStateOf(false) }
+    var showBodyweightLog by remember { mutableStateOf(false) }
+    var showSleepLog by remember { mutableStateOf(false) }
+    var showStrengthPrLog by remember { mutableStateOf(false) }
 
     val hour = java.time.LocalTime.now().hour
     val greeting = if (hour < 12) "Good morning" else if (hour < 18) "Good afternoon" else "Good evening"
+
+    val latestBwKg = uiState.bodyweightEntries.lastOrNull()?.weightKg
+    val bwLogDefaultKg = latestBwKg ?: 70f
+    val prLogDefaultKg = uiState.detailEntries.maxByOrNull { it.date }?.oneRmKg ?: 60f
 
     Box(modifier = Modifier.fillMaxSize().background(BgBase)) {
         Column(modifier = Modifier.fillMaxSize()) {
@@ -205,7 +182,7 @@ fun HomeScreen(
             ) {
                 // Personal Records
                 Column {
-                    SectionLabel("Personal Records")
+                    SectionHeader("Personal Records")
                     Spacer(Modifier.height(12.dp))
 
                     // Strength/Running switcher
@@ -239,27 +216,42 @@ fun HomeScreen(
 
                     Spacer(Modifier.height(14.dp))
 
-                    // 2×2 PR grid
-                    val prs = if (prTab == 0) strengthPRs else runningPRs
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.height(220.dp),
-                        userScrollEnabled = false,
-                    ) {
-                        items(prs) { pr ->
-                            PrCard(pr)
+                    if (prTab == 0) {
+                        if (uiState.strengthPrCards.isEmpty()) {
+                            EmptyPrState(
+                                message = "Add exercises in Settings → Strength Records",
+                            )
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier.height(prGridHeight(uiState.strengthPrCards.size)),
+                                userScrollEnabled = false,
+                            ) {
+                                items(uiState.strengthPrCards) { pr ->
+                                    PrCard(
+                                        pr = pr,
+                                        onClick = { viewModel.openStrengthPrDetail(pr.exerciseName) },
+                                    )
+                                }
+                            }
                         }
+                    } else {
+                        EmptyPrState(message = "Running records will sync from Strava")
                     }
                 }
 
                 // Bodyweight
                 Column {
-                    SectionLabel("Bodyweight")
+                    SectionHeader(
+                        title = "Bodyweight",
+                        onAdd = { showBodyweightLog = true },
+                    )
                     Spacer(Modifier.height(12.dp))
                     BodyweightCard(
-                        data = bwData.takeLast(26),
+                        data = uiState.bodyweightEntries,
+                        weightUnit = profile.weightUnit,
                         activeDot = activeBw,
                         onDotClick = { activeBw = if (activeBw == it) null else it },
                         onDismiss = { activeBw = null },
@@ -268,10 +260,13 @@ fun HomeScreen(
 
                 // Sleep
                 Column {
-                    SectionLabel("Sleep")
+                    SectionHeader(
+                        title = "Sleep",
+                        onAdd = { showSleepLog = true },
+                    )
                     Spacer(Modifier.height(12.dp))
                     SleepCard(
-                        data = sleepData,
+                        data = uiState.sleepEntries,
                         activeBar = activeSleep,
                         onBarClick = { activeSleep = if (activeSleep == it) null else it },
                         onDismiss = { activeSleep = null },
@@ -293,6 +288,10 @@ fun HomeScreen(
                     showSettings = false
                     showSplitEditor = true
                 },
+                onEditStrengthPrs = {
+                    showSettings = false
+                    viewModel.openStrengthPrSettings()
+                },
                 onToggleWeightUnit = viewModel::toggleWeightUnit,
                 onProfileNameChange = viewModel::setProfileName,
             )
@@ -305,6 +304,64 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
         ) {
             SplitEditorScreen(onClose = { showSplitEditor = false })
+        }
+
+        AnimatedVisibility(
+            visible = showStrengthPrSettings,
+            enter = slideInVertically(initialOffsetY = { it }),
+            exit = slideOutVertically(targetOffsetY = { it }),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            StrengthPrSettingsScreen(
+                initialNames = strengthPrSelection,
+                onSave = viewModel::saveStrengthPrSelection,
+                onClose = viewModel::closeStrengthPrSettings,
+            )
+        }
+
+        if (uiState.detailExerciseName != null) {
+            StrengthPrDetailScreen(
+                exerciseName = uiState.detailExerciseName!!,
+                entries = uiState.detailEntries,
+                weightUnit = profile.weightUnit,
+                onClose = viewModel::closeStrengthPrDetail,
+                onLogOneRm = { showStrengthPrLog = true },
+            )
+        }
+
+        if (showBodyweightLog) {
+            BodyweightLogSheet(
+                weightUnit = profile.weightUnit,
+                initialDisplayKg = bwLogDefaultKg,
+                onDismiss = { showBodyweightLog = false },
+                onSave = { kg ->
+                    viewModel.logBodyweight(kg)
+                    showBodyweightLog = false
+                },
+            )
+        }
+
+        if (showSleepLog) {
+            SleepLogSheet(
+                onDismiss = { showSleepLog = false },
+                onSave = { hours, tag ->
+                    viewModel.logSleep(hours, tag)
+                    showSleepLog = false
+                },
+            )
+        }
+
+        if (showStrengthPrLog && uiState.detailExerciseName != null) {
+            StrengthPrLogSheet(
+                exerciseName = uiState.detailExerciseName!!,
+                weightUnit = profile.weightUnit,
+                initialDisplayKg = prLogDefaultKg,
+                onDismiss = { showStrengthPrLog = false },
+                onSave = { kg ->
+                    viewModel.logStrengthPr(kg)
+                    showStrengthPrLog = false
+                },
+            )
         }
     }
 }
@@ -319,16 +376,61 @@ private fun SectionLabel(text: String) {
 }
 
 @Composable
-private fun PrCard(pr: PrEntry) {
+private fun SectionHeader(title: String, onAdd: (() -> Unit)? = null) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        SectionLabel(title)
+        if (onAdd != null) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .border(1.dp, Color.White.copy(alpha = 0.14f), CircleShape)
+                    .clip(CircleShape)
+                    .clickableNoRipple(onAdd),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Lucide.Plus, contentDescription = "Add", tint = TextSecondary, modifier = Modifier.size(16.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyPrState(message: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(prGridHeight(1))
+            .clip(RoundedCornerShape(16.dp))
+            .background(Surface1)
+            .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodySmall,
+            color = TextTertiary,
+            modifier = Modifier.padding(horizontal = 24.dp),
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun PrCard(pr: PrCardUi, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
             .background(Surface1)
             .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp))
+            .clickableNoRipple(onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Text(
-            text = pr.exercise.uppercase(),
+            text = pr.exerciseName.uppercase(),
             style = MaterialTheme.typography.labelLargeCaps,
             color = TextTertiary,
         )
@@ -340,13 +442,15 @@ private fun PrCard(pr: PrEntry) {
                 color = TextPrimary,
                 modifier = Modifier.alignByBaseline(),
             )
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text = pr.unit,
-                style = MaterialTheme.typography.monoLabel,
-                color = TextTertiary,
-                modifier = Modifier.alignByBaseline(),
-            )
+            if (pr.unit.isNotEmpty()) {
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = pr.unit,
+                    style = MaterialTheme.typography.monoLabel,
+                    color = TextTertiary,
+                    modifier = Modifier.alignByBaseline(),
+                )
+            }
         }
         Spacer(Modifier.height(4.dp))
         val deltaColor = when {
@@ -364,16 +468,29 @@ private fun PrCard(pr: PrEntry) {
 
 @Composable
 private fun BodyweightCard(
-    data: List<BwPoint>,
+    data: List<BodyweightEntry>,
+    weightUnit: WeightUnit,
     activeDot: Int?,
     onDotClick: (Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val current = data.last().weight
-    // Change across the whole visible window, so the label matches the trend
-    // the chart shows (week-over-week is too noisy to be meaningful).
-    val delta = current - data.first().weight
-    val deltaStr = (if (delta >= 0) "+" else "") + "%.1f kg".format(Locale.ROOT, delta)
+    val unitLabel = WeightFormat.unitLabel(weightUnit)
+    val latest = data.lastOrNull()
+    val currentDisplay = latest?.let { WeightFormat.kgToDisplay(it.weightKg, weightUnit) }
+    val deltaStr = if (data.size >= 2) {
+        val deltaKg = data.last().weightKg - data.first().weightKg
+        val deltaDisplay = WeightFormat.kgToDisplay(deltaKg, weightUnit)
+        val sign = if (deltaDisplay >= 0) "+" else ""
+        val valueStr = if ((deltaDisplay * 10).roundToInt() % 10 == 0) {
+            "${deltaDisplay.toInt()}"
+        } else {
+            "%.1f".format(Locale.ROOT, deltaDisplay)
+        }
+        "$sign$valueStr $unitLabel"
+    } else {
+        "—"
+    }
+
     val deltaColor = Green500
 
     Column(
@@ -392,14 +509,16 @@ private fun BodyweightCard(
         ) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
-                    text = "%.1f".format(Locale.ROOT, current),
+                    text = currentDisplay?.let {
+                        if ((it * 10).roundToInt() % 10 == 0) "${it.toInt()}" else "%.1f".format(Locale.ROOT, it)
+                    } ?: "—",
                     style = MaterialTheme.typography.displaySmall,
                     color = TextPrimary,
                     modifier = Modifier.alignByBaseline(),
                 )
                 Spacer(Modifier.width(5.dp))
                 Text(
-                    text = "kg",
+                    text = unitLabel,
                     style = MaterialTheme.typography.monoTitle,
                     color = TextTertiary,
                     modifier = Modifier.alignByBaseline(),
@@ -414,20 +533,33 @@ private fun BodyweightCard(
 
         Spacer(Modifier.height(16.dp))
 
+        if (data.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(110.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("No weigh-ins yet", style = MaterialTheme.typography.caption, color = TextTertiary)
+            }
+            return@Column
+        }
+
         // Y-axis ticks + chart
         val chartHeightDp = 110.dp
-        val weights = data.map { it.weight }
+        val weights = data.map { WeightFormat.kgToDisplay(it.weightKg, weightUnit) }
         val minW = weights.min()
         val maxW = weights.max()
-        val pad = (maxW - minW) * 0.14f
+        val pad = ((maxW - minW).coerceAtLeast(0.5f)) * 0.14f
         val yMin = minW - pad
         val yMax = maxW + pad
 
         val tickStep = if (maxW - minW > 6) 2f else 1f
-        val tLow = (Math.ceil(minW / tickStep.toDouble()) * tickStep).toFloat()
-        val tHigh = (Math.floor(maxW / tickStep.toDouble()) * tickStep).toFloat()
+        val tLow = (Math.ceil(yMin / tickStep.toDouble()) * tickStep).toFloat()
+        val tHigh = (Math.floor(yMax / tickStep.toDouble()) * tickStep).toFloat()
         val tMid = (Math.round((tLow + tHigh) / 2f / tickStep) * tickStep).toFloat()
         val yTicks = if (tMid != tLow && tMid != tHigh) listOf(tHigh, tMid, tLow) else listOf(tHigh, tLow)
+        val xDenom = (data.size - 1).coerceAtLeast(1)
 
         Row(verticalAlignment = Alignment.Top) {
             // Y axis
@@ -460,12 +592,12 @@ private fun BodyweightCard(
                                     val w = size.width.toFloat()
                                     val h = size.height.toFloat()
                                     val nearest = data.indices.minByOrNull { i ->
-                                        val x = (i.toFloat() / (data.size - 1)) * w
+                                        val x = (i.toFloat() / xDenom) * w
                                         Math.abs(offset.x - x)
                                     }
                                     val onPoint = nearest != null && run {
-                                        val x = (nearest.toFloat() / (data.size - 1)) * w
-                                        val y = h - ((data[nearest].weight - yMin) / (yMax - yMin)) * h
+                                        val x = (nearest.toFloat() / xDenom) * w
+                                        val y = h - ((weights[nearest] - yMin) / (yMax - yMin)) * h
                                         Math.hypot((offset.x - x).toDouble(), (offset.y - y).toDouble()) <= touchSlop
                                     }
                                     if (onPoint) onDotClick(nearest!!) else onDismiss()
@@ -474,10 +606,10 @@ private fun BodyweightCard(
                     ) {
                         val w = size.width
                         val h = size.height
-                        fun toX(i: Int) = (i.toFloat() / (data.size - 1)) * w
+                        fun toX(i: Int) = (i.toFloat() / xDenom) * w
                         fun toY(weight: Float) = h - ((weight - yMin) / (yMax - yMin)) * h
 
-                        val pts = data.indices.map { i -> Offset(toX(i), toY(data[i].weight)) }
+                        val pts = data.indices.map { i -> Offset(toX(i), toY(weights[i])) }
 
                         // Gridlines
                         yTicks.forEach { tick ->
@@ -532,12 +664,13 @@ private fun BodyweightCard(
                     // Tooltip
                     if (activeDot != null && activeDot in data.indices) {
                         val pt = data[activeDot]
-                        val xFrac = activeDot.toFloat() / (data.size - 1)
-                        val yFrac = 1f - (pt.weight - yMin) / (yMax - yMin)
+                        val displayWeight = weights[activeDot]
+                        val xFrac = activeDot.toFloat() / xDenom
+                        val yFrac = 1f - (displayWeight - yMin) / (yMax - yMin)
                         val dotXDp = maxWidth * xFrac
                         val dotYDp = maxHeight * yFrac
                         val tooltipDate = "${pt.date.dayOfMonth} ${pt.date.month.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH)}"
-                        val tooltipWeight = "%.1f kg".format(Locale.ROOT, pt.weight)
+                        val tooltipWeight = "${WeightFormat.formatWeight(pt.weightKg, weightUnit)} $unitLabel"
                         ChartTooltip(
                             chartWidth = maxWidth,
                             chartHeight = maxHeight,
@@ -573,7 +706,7 @@ private fun BodyweightCard(
                         monthGroups[key] = if (existing == null) i..i else existing.first..i
                     }
                     monthGroups.forEach { (_, range) ->
-                        val centerFrac = (range.first + range.last).toFloat() / 2f / (data.size - 1)
+                        val centerFrac = (range.first + range.last).toFloat() / 2f / xDenom
                         val label = data[range.first].date.month.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH)
                         Box(
                             modifier = Modifier
@@ -607,7 +740,7 @@ private fun SleepCard(
     val scaleMin = 3.5f
     val scaleMax = 9f
     val span = scaleMax - scaleMin
-    val tickHours = listOf(4f, 5f, 6f, 7f, 8f)
+    val tickHours = listOf(4f, 5f, 6f, 7f, 8f, 9f)
     val chartHeightDp = 130.dp
 
     Column(
@@ -662,11 +795,15 @@ private fun SleepCard(
                         verticalAlignment = Alignment.Bottom,
                     ) {
                         data.forEachIndexed { i, entry ->
+                            if (entry.hours <= 0f) {
+                                Spacer(modifier = Modifier.weight(1f))
+                                return@forEachIndexed
+                            }
                             val heightFrac = ((entry.hours - scaleMin) / span).coerceIn(0f, 1f)
-                            val barColor = when (entry.energy) {
-                                "Sleepy" -> SleepSleepy
-                                "Neutral" -> SleepNeutral
-                                else -> SleepEnergised
+                            val barColor = when (entry.energyTag) {
+                                EnergyTag.SLEEPY -> SleepSleepy
+                                EnergyTag.NEUTRAL -> SleepNeutral
+                                EnergyTag.ENERGISED -> SleepEnergised
                             }
                             val alpha = if (activeBar == null || activeBar == i) 1f else 0.28f
                             Box(
@@ -683,6 +820,7 @@ private fun SleepCard(
                     // Tooltip
                     if (activeBar != null && activeBar in data.indices) {
                         val entry = data[activeBar]
+                        if (entry.hours > 0f) {
                         val xFrac = (activeBar + 0.5f) / data.size
                         val barHeightFrac = maxOf(0f, (entry.hours - scaleMin) / span)
                         val barTopYDp = maxHeight * (1f - barHeightFrac)
@@ -703,15 +841,20 @@ private fun SleepCard(
                                 Column {
                                     val label = "${entry.date.dayOfMonth} ${entry.date.month.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH)}"
                                     Text(label, style = MaterialTheme.typography.caption, color = TextTertiary)
-                                    Text("%.1f h".format(entry.hours), style = MaterialTheme.typography.titleMedium, color = TextPrimary)
-                                    val energyColor = when (entry.energy) {
-                                        "Sleepy" -> Color(0xFF6BF5AD).copy(alpha = 0.5f)
-                                        "Neutral" -> Green500.copy(alpha = 0.7f)
-                                        else -> Green500
+                                    Text(
+                                        SleepFormat.formatDuration(entry.hours),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = TextPrimary,
+                                    )
+                                    val energyColor = when (entry.energyTag) {
+                                        EnergyTag.SLEEPY -> Color(0xFF6BF5AD).copy(alpha = 0.5f)
+                                        EnergyTag.NEUTRAL -> Green500.copy(alpha = 0.7f)
+                                        EnergyTag.ENERGISED -> Green500
                                     }
-                                    Text(entry.energy, style = MaterialTheme.typography.captionEmphasis, color = energyColor)
+                                    Text(entry.energyTag.displayName, style = MaterialTheme.typography.captionEmphasis, color = energyColor)
                                 }
                             }
+                        }
                         }
                     }
                 }
@@ -722,13 +865,8 @@ private fun SleepCard(
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth().height(14.dp)) {
                     val totalWidth = maxWidth
                     val n = data.size
-                    val labelCount = 5
-                    val firstIdx = 3
-                    val lastIdx = n - 4
-                    val indices = (0 until labelCount)
-                        .map { k -> (firstIdx + (lastIdx - firstIdx) * k / (labelCount - 1f)).roundToInt() }
-                        .distinct()
-                    indices.forEach { idx ->
+                    val labelIndices = listOf(0, 7, 14, 21, 29).filter { it < n }
+                    labelIndices.forEach { idx ->
                         val entry = data[idx]
                         val centerFrac = (idx + 0.5f) / n
                         Box(

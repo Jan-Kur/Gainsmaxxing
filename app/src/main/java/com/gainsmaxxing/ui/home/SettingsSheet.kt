@@ -42,6 +42,7 @@ import com.composables.icons.lucide.Download
 import com.composables.icons.lucide.Dumbbell
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Scale
+import com.composables.icons.lucide.Trophy
 import com.gainsmaxxing.domain.WeightFormat
 import com.gainsmaxxing.domain.model.UserProfile
 import com.gainsmaxxing.ui.components.clickableNoRipple
@@ -64,6 +65,7 @@ fun SettingsSheet(
     profile: UserProfile,
     onClose: () -> Unit,
     onEditSplit: () -> Unit,
+    onEditStrengthPrs: () -> Unit,
     onToggleWeightUnit: () -> Unit,
     onProfileNameChange: (String) -> Unit,
 ) {
@@ -186,6 +188,14 @@ fun SettingsSheet(
                     .background(Surface1)
                     .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp)),
             ) {
+                SettingsRow(
+                    icon = Lucide.Trophy,
+                    iconBg = Amber500.copy(alpha = 0.12f),
+                    iconTint = Amber500,
+                    label = "Strength Records",
+                    onClick = onEditStrengthPrs,
+                )
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).padding(start = 58.dp).background(Color.White.copy(alpha = 0.06f)))
                 SettingsRow(
                     icon = Lucide.Dumbbell,
                     iconBg = Green500.copy(alpha = 0.12f),

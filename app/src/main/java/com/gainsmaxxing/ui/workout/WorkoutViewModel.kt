@@ -57,6 +57,7 @@ data class HistorySessionUi(
     val dateLabel: String,
     val sets: List<SetUi>,
     val topWeightKg: Float?,
+    val startedAtEpochMs: Long,
 )
 
 data class WorkoutUiState(
@@ -223,6 +224,7 @@ class WorkoutViewModel @Inject constructor(
                     dateLabel = formatShortDate(session.date),
                     sets = session.sets.map { it.toSetUi(weightUnit = unit, isPr = false) },
                     topWeightKg = SetComparison.topWorkingWeightKg(session.sets),
+                    startedAtEpochMs = session.startedAt.toEpochMilli(),
                 )
             }
             isLoadingHistory.value = false

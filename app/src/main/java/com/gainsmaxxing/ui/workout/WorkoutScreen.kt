@@ -278,7 +278,9 @@ fun WorkoutScreen(
         }
 
         if (uiState.historyExerciseId != null) {
-            val historyPoints = uiState.historySessions.mapNotNull { session ->
+            val historyPoints = uiState.historySessions
+                .sortedBy { it.startedAtEpochMs }
+                .mapNotNull { session ->
                 session.topWeightKg?.let { top ->
                     session.date to WeightFormat.kgToDisplay(top, uiState.weightUnit)
                 }
