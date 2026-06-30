@@ -86,6 +86,7 @@ import com.gainsmaxxing.ui.workout.SplitEditorScreen
 import com.gainsmaxxing.ui.theme.Amber500
 import com.gainsmaxxing.ui.theme.BgBase
 import com.gainsmaxxing.ui.theme.Blue500
+import com.gainsmaxxing.ui.theme.BorderDefault
 import com.gainsmaxxing.ui.theme.BorderSubtle
 import com.gainsmaxxing.ui.theme.caption
 import com.gainsmaxxing.ui.theme.captionEmphasis
@@ -494,15 +495,27 @@ private fun SectionHeader(title: String, onAdd: (() -> Unit)? = null) {
     ) {
         SectionLabel(title)
         if (onAdd != null) {
-            Box(
+            Row(
                 modifier = Modifier
-                    .size(32.dp)
-                    .border(1.dp, Color.White.copy(alpha = 0.14f), CircleShape)
-                    .clip(CircleShape)
-                    .clickableNoRipple(onAdd),
-                contentAlignment = Alignment.Center,
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Surface1)
+                    .border(1.dp, BorderSubtle, RoundedCornerShape(999.dp))
+                    .clickableNoRipple(onAdd)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Lucide.Plus, contentDescription = "Add", tint = TextSecondary, modifier = Modifier.size(16.dp))
+                Icon(
+                    Lucide.Plus,
+                    contentDescription = "Log entry",
+                    tint = TextSecondary,
+                    modifier = Modifier.size(14.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = "Log",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = TextSecondary,
+                )
             }
         }
     }
