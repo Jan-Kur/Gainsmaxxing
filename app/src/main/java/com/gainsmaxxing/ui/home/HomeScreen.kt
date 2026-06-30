@@ -94,6 +94,7 @@ import com.gainsmaxxing.ui.theme.monoBodyEmphasis
 import com.gainsmaxxing.ui.theme.monoLabel
 import com.gainsmaxxing.ui.theme.monoTitle
 import com.gainsmaxxing.ui.theme.Green500
+import com.gainsmaxxing.ui.theme.Red500
 import com.gainsmaxxing.ui.theme.Green700
 import com.gainsmaxxing.ui.theme.SleepEnergised
 import com.gainsmaxxing.ui.theme.SleepNeutral
@@ -544,14 +545,20 @@ private fun PrCard(pr: PrCardUi, onClick: () -> Unit) {
             color = TextTertiary,
         )
         Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.Bottom) {
+        if (!pr.hasEntry) {
             Text(
-                text = pr.value,
-                style = MaterialTheme.typography.headlineSmall,
-                color = TextPrimary,
-                modifier = Modifier.alignByBaseline(),
+                text = "No entry yet",
+                style = MaterialTheme.typography.caption,
+                color = TextTertiary,
             )
-            if (pr.unit.isNotEmpty()) {
+        } else {
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    text = pr.value,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = TextPrimary,
+                    modifier = Modifier.alignByBaseline(),
+                )
                 Spacer(Modifier.width(4.dp))
                 Text(
                     text = pr.unit,
@@ -560,18 +567,18 @@ private fun PrCard(pr: PrCardUi, onClick: () -> Unit) {
                     modifier = Modifier.alignByBaseline(),
                 )
             }
+            Spacer(Modifier.height(4.dp))
+            val deltaColor = when {
+                pr.delta.startsWith("−") || pr.delta.startsWith("-") -> Red500
+                pr.delta.startsWith("+") -> Green500
+                else -> TextTertiary
+            }
+            Text(
+                text = pr.delta,
+                style = MaterialTheme.typography.labelLarge,
+                color = deltaColor,
+            )
         }
-        Spacer(Modifier.height(4.dp))
-        val deltaColor = when {
-            pr.delta.startsWith("−") || pr.delta.startsWith("-") -> Green500
-            pr.delta.startsWith("+") -> Green500
-            else -> TextTertiary
-        }
-        Text(
-            text = pr.delta,
-            style = MaterialTheme.typography.labelLarge,
-            color = deltaColor,
-        )
     }
 }
 
@@ -584,23 +591,7 @@ private fun BodyweightCard(
     onDismiss: () -> Unit,
 ) {
     val unitLabel = WeightFormat.unitLabel(weightUnit)
-    val latest = data.lastOrNull()
-    val currentDisplay = latest?.let { WeightFormat.kgToDisplay(it.weightKg, weightUnit) }
-    val deltaStr = if (data.size >= 2) {
-        val deltaKg = data.last().weightKg - data.first().weightKg
-        val deltaDisplay = WeightFormat.kgToDisplay(deltaKg, weightUnit)
-        val sign = if (deltaDisplay >= 0) "+" else ""
-        val valueStr = if ((deltaDisplay * 10).roundToInt() % 10 == 0) {
-            "${deltaDisplay.toInt()}"
-        } else {
-            "%.1f".format(Locale.ROOT, deltaDisplay)
-        }
-        "$sign$valueStr $unitLabel"
-    } else {
-        "—"
-    }
-
-    val deltaColor = Green500
+    val chartHeightDp = 110.dp
 
     Column(
         modifier = Modifier
@@ -611,6 +602,76 @@ private fun BodyweightCard(
             .pointerInput(Unit) { detectTapGestures { onDismiss() } }
             .padding(18.dp),
     ) {
+        when {
+            data.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(chartHeightDp + 40.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Log a weigh-in to get started",
+                        style = MaterialTheme.typography.caption,
+                        color = TextTertiary,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                return@Column
+            }
+
+            data.size == 1 -> {
+                val weight = WeightFormat.kgToDisplay(data.first().weightKg, weightUnit)
+                val weightStr = if ((weight * 10).roundToInt() % 10 == 0) {
+                    "${weight.toInt()}"
+                } else {
+                    "%.1f".format(Locale.ROOT, weight)
+                }
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = weightStr,
+                        style = MaterialTheme.typography.displaySmall,
+                        color = TextPrimary,
+                        modifier = Modifier.alignByBaseline(),
+                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        text = unitLabel,
+                        style = MaterialTheme.typography.monoTitle,
+                        color = TextTertiary,
+                        modifier = Modifier.alignByBaseline(),
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(chartHeightDp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Add another weigh-in to see the trend",
+                        style = MaterialTheme.typography.caption,
+                        color = TextTertiary,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                return@Column
+            }
+        }
+
+        val latest = data.last()
+        val currentDisplay = WeightFormat.kgToDisplay(latest.weightKg, weightUnit)
+        val deltaKg = data.last().weightKg - data.first().weightKg
+        val deltaDisplay = WeightFormat.kgToDisplay(deltaKg, weightUnit)
+        val deltaSign = if (deltaDisplay >= 0) "+" else ""
+        val deltaValueStr = if ((deltaDisplay * 10).roundToInt() % 10 == 0) {
+            "${deltaDisplay.toInt()}"
+        } else {
+            "%.1f".format(Locale.ROOT, deltaDisplay)
+        }
+        val deltaStr = "$deltaSign$deltaValueStr $unitLabel"
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -618,9 +679,11 @@ private fun BodyweightCard(
         ) {
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
-                    text = currentDisplay?.let {
-                        if ((it * 10).roundToInt() % 10 == 0) "${it.toInt()}" else "%.1f".format(Locale.ROOT, it)
-                    } ?: "—",
+                    text = if ((currentDisplay * 10).roundToInt() % 10 == 0) {
+                        "${currentDisplay.toInt()}"
+                    } else {
+                        "%.1f".format(Locale.ROOT, currentDisplay)
+                    },
                     style = MaterialTheme.typography.displaySmall,
                     color = TextPrimary,
                     modifier = Modifier.alignByBaseline(),
@@ -636,26 +699,13 @@ private fun BodyweightCard(
             Text(
                 text = deltaStr,
                 style = MaterialTheme.typography.labelLarge,
-                color = deltaColor,
+                color = Green500,
             )
         }
 
         Spacer(Modifier.height(16.dp))
 
-        if (data.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(110.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("No weigh-ins yet", style = MaterialTheme.typography.caption, color = TextTertiary)
-            }
-            return@Column
-        }
-
         // Y-axis ticks + chart
-        val chartHeightDp = 110.dp
         val weights = data.map { WeightFormat.kgToDisplay(it.weightKg, weightUnit) }
         val minW = weights.min()
         val maxW = weights.max()

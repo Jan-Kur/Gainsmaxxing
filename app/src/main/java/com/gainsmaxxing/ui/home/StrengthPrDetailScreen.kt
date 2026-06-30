@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.ArrowLeft
@@ -68,6 +69,7 @@ import com.gainsmaxxing.ui.theme.caption
 import com.gainsmaxxing.ui.theme.labelLargeCaps
 import com.gainsmaxxing.ui.theme.monoBodyEmphasis
 import com.gainsmaxxing.ui.theme.monoLabel
+import com.gainsmaxxing.ui.theme.monoTitle
 import com.gainsmaxxing.ui.theme.screenTitle
 import java.time.LocalDate
 import java.time.format.TextStyle
@@ -123,15 +125,13 @@ fun StrengthPrDetailScreen(
                 it.date to WeightFormat.kgToDisplay(it.oneRmKg, weightUnit)
             }
 
-            if (points.isNotEmpty()) {
-                OneRmChart(
-                    points = points,
-                    weightUnit = weightUnit,
-                    activePt = activePt,
-                    onPtClick = { activePt = if (activePt == it) null else it },
-                    onDismiss = { activePt = null },
-                )
-            }
+            OneRmChart(
+                points = points,
+                weightUnit = weightUnit,
+                activePt = activePt,
+                onPtClick = { activePt = if (activePt == it) null else it },
+                onDismiss = { activePt = null },
+            )
 
             Column(
                 modifier = Modifier
@@ -216,10 +216,84 @@ private fun OneRmChart(
     onPtClick: (Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    if (points.isEmpty()) return
-
     val chartHeightDp = 110.dp
-    val minWeight = points.minOf { it.second }
+    val unitLabel = WeightFormat.unitLabel(weightUnit)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 14.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Surface1)
+            .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp))
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Text("1RM", style = MaterialTheme.typography.labelLargeCaps, color = TextTertiary)
+
+        when {
+            points.isEmpty() -> {
+                Spacer(Modifier.height(10.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(chartHeightDp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Log a 1RM to get started",
+                        style = MaterialTheme.typography.caption,
+                        color = TextTertiary,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                return@Column
+            }
+
+            points.size == 1 -> {
+                val weight = points.first().second
+                val weightStr = if ((weight * 10).roundToInt() % 10 == 0) {
+                    "${weight.toInt()}"
+                } else {
+                    "%.1f".format(Locale.ROOT, weight)
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = weightStr,
+                        style = MaterialTheme.typography.displaySmall,
+                        color = TextPrimary,
+                        modifier = Modifier.alignByBaseline(),
+                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        text = unitLabel,
+                        style = MaterialTheme.typography.monoTitle,
+                        color = TextTertiary,
+                        modifier = Modifier.alignByBaseline(),
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(chartHeightDp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Add another entry to see the trend",
+                        style = MaterialTheme.typography.caption,
+                        color = TextTertiary,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                return@Column
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        val minWeight = points.minOf { it.second }
     val maxWeight = points.maxOf { it.second }
     val span = (maxWeight - minWeight).coerceAtLeast(2.5f)
     val pad = span * 0.14f
@@ -235,19 +309,6 @@ private fun OneRmChart(
         val tMid = (Math.round((tLow + tHigh) / 2f / tickStep) * tickStep).toFloat()
         if (tMid != tLow && tMid != tHigh) listOf(tHigh, tMid, tLow) else listOf(tHigh, tLow)
     }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 14.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Surface1)
-            .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp))
-            .pointerInput(Unit) { detectTapGestures { onDismiss() } }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-    ) {
-        Text("1RM", style = MaterialTheme.typography.labelLargeCaps, color = TextTertiary)
-        Spacer(Modifier.height(10.dp))
 
         Row(verticalAlignment = Alignment.Top) {
             Box(modifier = Modifier.wrapContentWidth().height(chartHeightDp)) {

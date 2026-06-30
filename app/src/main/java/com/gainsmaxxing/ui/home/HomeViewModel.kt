@@ -42,6 +42,7 @@ data class PrCardUi(
     val value: String,
     val unit: String,
     val delta: String,
+    val hasEntry: Boolean,
 )
 
 data class StrengthPrEntryUi(
@@ -99,11 +100,12 @@ class HomeViewModel @Inject constructor(
             val previous = latest?.let { StrengthPrComparison.previousEntry(summary.entries, it) }
             PrCardUi(
                 exerciseName = summary.exerciseName,
-                value = latest?.let { WeightFormat.formatWeight(it.oneRmKg, unit) } ?: "—",
-                unit = if (latest != null) unitLabel else "",
+                value = latest?.let { WeightFormat.formatWeight(it.oneRmKg, unit) } ?: "",
+                unit = unitLabel,
                 delta = latest?.let {
                     StrengthPrComparison.formatDeltaKg(it.oneRmKg, previous?.oneRmKg, unit)
-                } ?: "—",
+                } ?: "",
+                hasEntry = latest != null,
             )
         }
         HomeUiState(

@@ -95,6 +95,7 @@ import com.gainsmaxxing.ui.theme.caption
 import com.gainsmaxxing.ui.theme.exerciseDetails
 import com.gainsmaxxing.ui.theme.labelLargeCaps
 import com.gainsmaxxing.ui.theme.monoBodyEmphasis
+import com.gainsmaxxing.ui.theme.monoTitle
 import com.gainsmaxxing.ui.theme.screenTitle
 import com.gainsmaxxing.ui.theme.setPill
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -885,25 +886,9 @@ private fun HistoryChart(
     onDismiss: () -> Unit,
     weightUnit: WeightUnit,
 ) {
-    if (points.isEmpty()) return
-
     val chartHeightDp = 110.dp
-    val minWeight = points.minOf { it.second }
-    val maxWeight = points.maxOf { it.second }
-    val span = (maxWeight - minWeight).coerceAtLeast(2.5f)
-    val pad = span * 0.14f
-    val yMin = maxOf(0f, minWeight - pad)
-    val yMax = maxWeight + pad
+    val unitLabel = WeightFormat.unitLabel(weightUnit)
 
-    val tickStep = weightTickStep(span)
-    val tLow = (Math.ceil(yMin / tickStep.toDouble()) * tickStep).toFloat()
-    val tHigh = (Math.floor(yMax / tickStep.toDouble()) * tickStep).toFloat()
-    val yTicks = if (tLow > tHigh) {
-        listOf(Math.round(minWeight / tickStep) * tickStep)
-    } else {
-        val tMid = (Math.round((tLow + tHigh) / 2f / tickStep) * tickStep).toFloat()
-        if (tMid != tLow && tMid != tHigh) listOf(tHigh, tMid, tLow) else listOf(tHigh, tLow)
-    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -919,7 +904,85 @@ private fun HistoryChart(
             style = MaterialTheme.typography.labelLargeCaps,
             color = TextTertiary,
         )
+
+        when {
+            points.isEmpty() -> {
+                Spacer(Modifier.height(10.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(chartHeightDp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Log a workout to get started",
+                        style = MaterialTheme.typography.caption,
+                        color = TextTertiary,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                return@Column
+            }
+
+            points.size == 1 -> {
+                val weight = points.first().second
+                val weightStr = if ((weight * 10).roundToInt() % 10 == 0) {
+                    "${weight.toInt()}"
+                } else {
+                    "%.1f".format(Locale.ROOT, weight)
+                }
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = weightStr,
+                        style = MaterialTheme.typography.displaySmall,
+                        color = TextPrimary,
+                        modifier = Modifier.alignByBaseline(),
+                    )
+                    Spacer(Modifier.width(5.dp))
+                    Text(
+                        text = unitLabel,
+                        style = MaterialTheme.typography.monoTitle,
+                        color = TextTertiary,
+                        modifier = Modifier.alignByBaseline(),
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(chartHeightDp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "Add another session to see the trend",
+                        style = MaterialTheme.typography.caption,
+                        color = TextTertiary,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                return@Column
+            }
+        }
+
         Spacer(Modifier.height(10.dp))
+
+        val minWeight = points.minOf { it.second }
+    val maxWeight = points.maxOf { it.second }
+    val span = (maxWeight - minWeight).coerceAtLeast(2.5f)
+    val pad = span * 0.14f
+    val yMin = maxOf(0f, minWeight - pad)
+    val yMax = maxWeight + pad
+
+    val tickStep = weightTickStep(span)
+    val tLow = (Math.ceil(yMin / tickStep.toDouble()) * tickStep).toFloat()
+    val tHigh = (Math.floor(yMax / tickStep.toDouble()) * tickStep).toFloat()
+    val yTicks = if (tLow > tHigh) {
+        listOf(Math.round(minWeight / tickStep) * tickStep)
+    } else {
+        val tMid = (Math.round((tLow + tHigh) / 2f / tickStep) * tickStep).toFloat()
+        if (tMid != tLow && tMid != tHigh) listOf(tHigh, tMid, tLow) else listOf(tHigh, tLow)
+    }
 
         Row(verticalAlignment = Alignment.Top) {
             Box(modifier = Modifier.wrapContentWidth().height(chartHeightDp)) {
