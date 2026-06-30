@@ -2,6 +2,7 @@ package com.gainsmaxxing.data.db
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import com.gainsmaxxing.data.db.dao.CalendarDao
 import com.gainsmaxxing.data.db.dao.BodyMetricsDao
 import com.gainsmaxxing.data.db.dao.ExerciseDao
 import com.gainsmaxxing.data.db.dao.SessionSetDao
@@ -9,7 +10,10 @@ import com.gainsmaxxing.data.db.dao.SplitDao
 import com.gainsmaxxing.data.db.dao.StrengthPrDao
 import com.gainsmaxxing.data.db.dao.UserPreferencesDao
 import com.gainsmaxxing.data.db.dao.WorkoutSessionDao
+import com.gainsmaxxing.data.db.entities.ActivityTypeEntity
 import com.gainsmaxxing.data.db.entities.BodyweightEntryEntity
+import com.gainsmaxxing.data.db.entities.CalendarSkipEntity
+import com.gainsmaxxing.data.db.entities.CalendarTemplateSlotEntity
 import com.gainsmaxxing.data.db.entities.ExerciseEntity
 import com.gainsmaxxing.data.db.entities.SessionSetEntity
 import com.gainsmaxxing.data.db.entities.SleepEntryEntity
@@ -23,6 +27,9 @@ import com.gainsmaxxing.data.db.entities.WorkoutSessionEntity
 
 @Database(
     entities = [
+        ActivityTypeEntity::class,
+        CalendarTemplateSlotEntity::class,
+        CalendarSkipEntity::class,
         ExerciseEntity::class,
         SplitDayEntity::class,
         TemplateExerciseEntity::class,
@@ -35,10 +42,11 @@ import com.gainsmaxxing.data.db.entities.WorkoutSessionEntity
         StrengthPrExerciseEntity::class,
         StrengthPrSelectionEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
+    abstract fun calendarDao(): CalendarDao
     abstract fun exerciseDao(): ExerciseDao
     abstract fun splitDao(): SplitDao
     abstract fun workoutSessionDao(): WorkoutSessionDao
