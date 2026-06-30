@@ -42,6 +42,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,7 +62,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.gainsmaxxing.ui.components.ChartTooltip
 import com.gainsmaxxing.ui.components.clickableNoRipple
-import com.gainsmaxxing.ui.home.SettingsSheet
+import com.gainsmaxxing.ui.workout.SplitEditorScreen
 import com.gainsmaxxing.ui.theme.Amber500
 import com.gainsmaxxing.ui.theme.BgBase
 import com.gainsmaxxing.ui.theme.Blue500
@@ -138,13 +140,17 @@ private fun generateSleepData(): List<SleepEntry> {
 }
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    viewModel: HomeViewModel = hiltViewModel(),
+) {
+    val profile by viewModel.profile.collectAsStateWithLifecycle()
     val bwData = remember { generateBwData() }
     val sleepData = remember { generateSleepData() }
     var prTab by rememberSaveable { mutableIntStateOf(0) }
     var activeBw by remember { mutableStateOf<Int?>(null) }
     var activeSleep by remember { mutableStateOf<Int?>(null) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    var showSplitEditor by rememberSaveable { mutableStateOf(false) }
 
     val hour = java.time.LocalTime.now().hour
     val greeting = if (hour < 12) "Good morning" else if (hour < 18) "Good afternoon" else "Good evening"
@@ -167,7 +173,7 @@ fun HomeScreen() {
                         color = TextTertiary,
                     )
                     Text(
-                        text = "Jan",
+                        text = profile.name,
                         style = MaterialTheme.typography.headlineMedium,
                         color = TextPrimary,
                     )
@@ -181,7 +187,7 @@ fun HomeScreen() {
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "J",
+                        text = profile.name.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
                         style = MaterialTheme.typography.titleLarge,
                         color = Color.White,
                     )
@@ -280,7 +286,25 @@ fun HomeScreen() {
             exit = slideOutVertically(targetOffsetY = { it }),
             modifier = Modifier.fillMaxSize(),
         ) {
-            SettingsSheet(onClose = { showSettings = false })
+            SettingsSheet(
+                profile = profile,
+                onClose = { showSettings = false },
+                onEditSplit = {
+                    showSettings = false
+                    showSplitEditor = true
+                },
+                onToggleWeightUnit = viewModel::toggleWeightUnit,
+                onProfileNameChange = viewModel::setProfileName,
+            )
+        }
+
+        AnimatedVisibility(
+            visible = showSplitEditor,
+            enter = slideInVertically(initialOffsetY = { it }),
+            exit = slideOutVertically(targetOffsetY = { it }),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            SplitEditorScreen(onClose = { showSplitEditor = false })
         }
     }
 }

@@ -16,6 +16,10 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+
+        ksp {
+            arg("room.schemaLocation", "$projectDir/schemas")
+        }
     }
 
     buildTypes {
@@ -55,6 +59,9 @@ dependencies {
     ksp("androidx.room:room-compiler:2.7.1")
 
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
+
+    testImplementation("junit:junit:4.13.2")
 
     implementation("androidx.compose.ui:ui-text-google-fonts")
     implementation("com.composables:icons-lucide:1.1.0")

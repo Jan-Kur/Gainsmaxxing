@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -31,16 +32,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.ArrowLeft
-import com.composables.icons.lucide.Bell
 import com.composables.icons.lucide.CalendarDays
 import com.composables.icons.lucide.ChevronRight
 import com.composables.icons.lucide.Download
 import com.composables.icons.lucide.Dumbbell
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Scale
+import com.gainsmaxxing.domain.WeightFormat
+import com.gainsmaxxing.domain.model.UserProfile
 import com.gainsmaxxing.ui.components.clickableNoRipple
 import com.gainsmaxxing.ui.theme.Amber500
 import com.gainsmaxxing.ui.theme.BgBase
@@ -57,9 +60,15 @@ import com.gainsmaxxing.ui.theme.monoBodySmall
 import com.gainsmaxxing.ui.theme.screenTitle
 
 @Composable
-fun SettingsSheet(onClose: () -> Unit) {
-    var weightUnit by remember { mutableStateOf("kg") }
-    var notificationsOn by remember { mutableStateOf(true) }
+fun SettingsSheet(
+    profile: UserProfile,
+    onClose: () -> Unit,
+    onEditSplit: () -> Unit,
+    onToggleWeightUnit: () -> Unit,
+    onProfileNameChange: (String) -> Unit,
+) {
+    var editingName by remember { mutableStateOf(false) }
+    var draftName by remember(profile.name) { mutableStateOf(profile.name) }
 
     Column(
         modifier = Modifier
@@ -67,7 +76,6 @@ fun SettingsSheet(onClose: () -> Unit) {
             .background(BgBase)
             .statusBarsPadding(),
     ) {
-        // Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -99,13 +107,13 @@ fun SettingsSheet(onClose: () -> Unit) {
                 .padding(horizontal = 20.dp)
                 .padding(bottom = 40.dp),
         ) {
-            // Profile card
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .background(Surface1)
                     .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp))
+                    .clickableNoRipple { editingName = !editingName }
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -117,25 +125,54 @@ fun SettingsSheet(onClose: () -> Unit) {
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "J",
+                        text = profile.name.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
                         style = MaterialTheme.typography.titleLarge,
                         color = Color.White,
                     )
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (editingName) {
+                        BasicTextField(
+                            value = draftName,
+                            onValueChange = { draftName = it },
+                            textStyle = MaterialTheme.typography.titleSmall.copy(color = TextPrimary),
+                            cursorBrush = SolidColor(Green500),
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    } else {
+                        Text(
+                            text = profile.name,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = TextPrimary,
+                        )
+                    }
                     Text(
-                        text = "Jan",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = TextPrimary,
-                    )
-                    Text(
-                        text = "Edit profile",
+                        text = if (editingName) "Tap outside row after editing" else "Edit profile",
                         style = MaterialTheme.typography.caption,
                         color = TextTertiary,
                     )
                 }
                 Icon(Lucide.ChevronRight, null, tint = TextTertiary, modifier = Modifier.size(16.dp))
+            }
+
+            if (editingName && draftName != profile.name) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Save name",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Green500.copy(alpha = 0.12f))
+                        .clickableNoRipple {
+                            onProfileNameChange(draftName)
+                            editingName = false
+                        }
+                        .padding(vertical = 12.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Green500,
+                )
             }
 
             Spacer(Modifier.height(28.dp))
@@ -149,9 +186,20 @@ fun SettingsSheet(onClose: () -> Unit) {
                     .background(Surface1)
                     .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp)),
             ) {
-                SettingsRow(icon = Lucide.Dumbbell, iconBg = Green500.copy(alpha = 0.12f), iconTint = Green500, label = "Edit Workout Split")
+                SettingsRow(
+                    icon = Lucide.Dumbbell,
+                    iconBg = Green500.copy(alpha = 0.12f),
+                    iconTint = Green500,
+                    label = "Edit Workout Split",
+                    onClick = onEditSplit,
+                )
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).padding(start = 58.dp).background(Color.White.copy(alpha = 0.06f)))
-                SettingsRow(icon = Lucide.CalendarDays, iconBg = Blue500.copy(alpha = 0.12f), iconTint = Blue500, label = "Edit Calendar")
+                SettingsRow(
+                    icon = Lucide.CalendarDays,
+                    iconBg = Blue500.copy(alpha = 0.12f),
+                    iconTint = Blue500,
+                    label = "Edit Calendar",
+                )
             }
 
             Spacer(Modifier.height(20.dp))
@@ -167,7 +215,7 @@ fun SettingsSheet(onClose: () -> Unit) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickableNoRipple { weightUnit = if (weightUnit == "kg") "lbs" else "kg" }
+                        .clickableNoRipple(onToggleWeightUnit)
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -188,40 +236,12 @@ fun SettingsSheet(onClose: () -> Unit) {
                         modifier = Modifier.weight(1f),
                     )
                     Text(
-                        text = weightUnit,
+                        text = WeightFormat.unitLabel(profile.weightUnit),
                         style = MaterialTheme.typography.monoBodySmall,
                         color = TextTertiary,
                     )
                     Spacer(Modifier.width(6.dp))
                     Icon(Lucide.ChevronRight, null, tint = TextTertiary, modifier = Modifier.size(15.dp))
-                }
-
-                Box(modifier = Modifier.fillMaxWidth().height(1.dp).padding(start = 58.dp).background(Color.White.copy(alpha = 0.06f)))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickableNoRipple { notificationsOn = !notificationsOn }
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(30.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color.White.copy(alpha = 0.07f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(Lucide.Bell, null, tint = TextSecondary, modifier = Modifier.size(15.dp))
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        text = "Notifications",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextPrimary,
-                        modifier = Modifier.weight(1f),
-                    )
-                    ToggleSwitch(on = notificationsOn, onClick = { notificationsOn = !notificationsOn })
                 }
             }
 
@@ -235,7 +255,12 @@ fun SettingsSheet(onClose: () -> Unit) {
                     .background(Surface1)
                     .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp)),
             ) {
-                SettingsRow(icon = Lucide.Download, iconBg = Color.White.copy(alpha = 0.07f), iconTint = TextSecondary, label = "Export Data")
+                SettingsRow(
+                    icon = Lucide.Download,
+                    iconBg = Color.White.copy(alpha = 0.07f),
+                    iconTint = TextSecondary,
+                    label = "Export Data",
+                )
             }
         }
     }
@@ -252,11 +277,17 @@ private fun SettingsSectionLabel(text: String) {
 }
 
 @Composable
-private fun SettingsRow(icon: ImageVector, iconBg: Color, iconTint: Color, label: String) {
+private fun SettingsRow(
+    icon: ImageVector,
+    iconBg: Color,
+    iconTint: Color,
+    label: String,
+    onClick: () -> Unit = {},
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickableNoRipple {}
+            .clickableNoRipple(onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -274,28 +305,5 @@ private fun SettingsRow(icon: ImageVector, iconBg: Color, iconTint: Color, label
             modifier = Modifier.weight(1f),
         )
         Icon(Lucide.ChevronRight, null, tint = TextTertiary, modifier = Modifier.size(15.dp))
-    }
-}
-
-@Composable
-private fun ToggleSwitch(on: Boolean, onClick: () -> Unit) {
-    val trackColor = if (on) Green500.copy(alpha = 0.4f) else Color.White.copy(alpha = 0.12f)
-    val knobColor = if (on) Green500 else TextTertiary
-    Box(
-        modifier = Modifier
-            .width(44.dp)
-            .height(26.dp)
-            .clip(CircleShape)
-            .background(trackColor)
-            .clickableNoRipple(onClick),
-        contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart,
-    ) {
-        Box(
-            modifier = Modifier
-                .padding(2.dp)
-                .size(22.dp)
-                .clip(CircleShape)
-                .background(knobColor),
-        )
     }
 }

@@ -36,11 +36,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -48,8 +46,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.ui.platform.LocalConfiguration
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,6 +74,7 @@ import com.composables.icons.lucide.Info
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Moon
 import com.composables.icons.lucide.Trophy
+import com.composables.icons.lucide.X
 import com.gainsmaxxing.ui.components.ChartTooltip
 import com.gainsmaxxing.ui.components.clickableNoRipple
 import com.gainsmaxxing.ui.theme.BgBase
@@ -95,132 +97,38 @@ import com.gainsmaxxing.ui.theme.labelLargeCaps
 import com.gainsmaxxing.ui.theme.monoBodyEmphasis
 import com.gainsmaxxing.ui.theme.screenTitle
 import com.gainsmaxxing.ui.theme.setPill
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.gainsmaxxing.domain.SetComparison
+import com.gainsmaxxing.domain.WeekMath
+import com.gainsmaxxing.domain.WeightFormat
+import com.gainsmaxxing.domain.model.WeightUnit
+
 import java.time.LocalDate
 import java.time.format.TextStyle as JTextStyle
 import java.util.Locale
 import kotlin.math.roundToInt
 
-data class ExerciseDef(val id: String, val name: String, val sets: Int, val reps: Int, val refWeight: Float, val unit: String)
-data class SetEntry(val weight: Float, val reps: Int, val isWarmup: Boolean, val isPR: Boolean = false)
-private data class HistorySession(val date: LocalDate, val sets: List<SetEntry>)
-
-private val split = mapOf(
-    1 to Pair("Upper A", listOf(
-        ExerciseDef("bench", "Bench Press", 4, 8, 100f, "kg"),
-        ExerciseDef("ohp", "Overhead Press", 3, 10, 70f, "kg"),
-        ExerciseDef("pullup", "Pull-ups", 3, 8, 15f, "BW"),
-        ExerciseDef("dbrow", "Dumbbell Row", 3, 12, 32f, "kg"),
-        ExerciseDef("lateral", "Lateral Raises", 3, 15, 12f, "kg"),
-    )),
-    3 to Pair("Lower A", listOf(
-        ExerciseDef("squat", "Back Squat", 4, 5, 137.5f, "kg"),
-        ExerciseDef("rdl", "Romanian DL", 3, 8, 90f, "kg"),
-        ExerciseDef("legpress", "Leg Press", 3, 12, 180f, "kg"),
-        ExerciseDef("legcurl", "Leg Curl", 3, 12, 50f, "kg"),
-        ExerciseDef("calf", "Calf Raises", 4, 15, 70f, "kg"),
-    )),
-    4 to Pair("Upper B", listOf(
-        ExerciseDef("dl", "Deadlift", 3, 5, 177.5f, "kg"),
-        ExerciseDef("incline", "Incline Press", 3, 10, 36f, "kg"),
-        ExerciseDef("cable", "Cable Rows", 3, 12, 65f, "kg"),
-        ExerciseDef("dips", "Weighted Dips", 3, 10, 20f, "BW"),
-        ExerciseDef("curl", "Bicep Curls", 3, 12, 22f, "kg"),
-    )),
-    6 to Pair("Lower B", listOf(
-        ExerciseDef("frontsq", "Front Squat", 3, 6, 100f, "kg"),
-        ExerciseDef("hipth", "Hip Thrust", 3, 10, 120f, "kg"),
-        ExerciseDef("lunge", "Walking Lunges", 3, 12, 30f, "kg"),
-        ExerciseDef("legext", "Leg Extension", 3, 15, 60f, "kg"),
-        ExerciseDef("scalf", "Seated Calves", 4, 20, 40f, "kg"),
-    )),
-)
-
-private val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-
-private fun todayDayIndex(): Int {
-    val dow = LocalDate.now().dayOfWeek.value // 1=Mon..7=Sun
-    return dow - 1 // 0=Mon..6=Sun
-}
-
-private fun formatWeight(w: Float): String =
-    if ((w * 10).roundToInt() % 10 == 0) "${w.toInt()}" else "%.1f".format(w)
-
 private val LogSetControlRowWidth = 240.dp
 
-private fun formatShortDate(date: LocalDate): String =
-    "${date.dayOfMonth} ${date.month.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH)}"
-
-private fun exerciseDetailsLine(ex: ExerciseDef): String {
-    val weightPart = if (ex.unit == "BW") "+${ex.refWeight.toInt()} kg BW" else "${formatWeight(ex.refWeight)} kg"
-    return "${ex.sets} sets · ${ex.reps} reps · $weightPart"
-}
-
-private fun weightStep(ex: ExerciseDef): Float = when {
-    ex.refWeight < 20f -> 1f
-    ex.refWeight < 60f -> 2f
-    else -> 2.5f
-}
-
-private fun topWorkingWeight(sets: List<SetEntry>): Float? =
-    sets.filterNot { it.isWarmup }.maxOfOrNull { it.weight }
-
-private fun mockHistorySessions(ex: ExerciseDef): List<HistorySession> {
-    val today = LocalDate.now()
-    val step = weightStep(ex)
-    val historicalTopWeights = listOf(5f, 4f, 4f, 3f, 3f, 2f, 2f, 1f, 1f, 1f, 0f, 0f)
-        .map { offset -> maxOf(step, ex.refWeight - (offset * step)) }
-
-    return historicalTopWeights.mapIndexed { index, topWeight ->
-        val repsOffset = ((index % 3) - 1).coerceAtLeast(-1)
-        val topSetReps = maxOf(1, ex.reps + repsOffset)
-        val backoffWeight = maxOf(step, topWeight - (2 * step))
-        HistorySession(
-            date = today.minusWeeks((historicalTopWeights.lastIndex - index).toLong()),
-            sets = listOf(
-                SetEntry(weight = backoffWeight, reps = ex.reps + 2, isWarmup = false),
-                SetEntry(weight = topWeight, reps = topSetReps, isWarmup = false),
-            ),
-        )
-    }
-}
-
-private fun historySessions(ex: ExerciseDef, activeSets: List<SetEntry>): List<HistorySession> {
-    val sessions = mockHistorySessions(ex)
-    val workingSets = activeSets.filterNot { it.isWarmup }
-    return if (workingSets.isEmpty()) sessions else sessions + HistorySession(LocalDate.now(), activeSets)
-}
-
-private fun previousBestWeight(ex: ExerciseDef, loggedSets: List<SetEntry>): Float {
-    val historicalBest = mockHistorySessions(ex).maxOfOrNull { session -> topWorkingWeight(session.sets) ?: 0f } ?: 0f
-    val activeWorkoutBest = topWorkingWeight(loggedSets) ?: 0f
-    return maxOf(historicalBest, activeWorkoutBest)
-}
-
-private fun weightTickStep(range: Float): Float = when {
-    range > 30f -> 20f
-    range > 15f -> 10f
-    range > 7.5f -> 5f
-    else -> 2.5f
-}
+private fun weightTickStep(range: Float): Float = SetComparison.weightTickStepKg(range)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun WorkoutScreen() {
-    var selectedDay by rememberSaveable { mutableIntStateOf(todayDayIndex()) }
-    var showActiveWorkout by rememberSaveable { mutableStateOf(false) }
-    var activeSets by remember { mutableStateOf(mapOf<String, List<SetEntry>>()) }
-    var logSheetExId by remember { mutableStateOf<String?>(null) }
-    var logWeight by remember { mutableFloatStateOf(80f) }
+fun WorkoutScreen(
+    viewModel: WorkoutViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var logSheetExerciseId by remember { mutableStateOf<Long?>(null) }
+    var logWeightDisplay by remember { mutableFloatStateOf(0f) }
     var logReps by remember { mutableIntStateOf(8) }
     var isWarmup by remember { mutableStateOf(false) }
-    var historyExId by remember { mutableStateOf<String?>(null) }
     var activeHistoryPt by remember { mutableStateOf<Int?>(null) }
 
-    val currentSplit = split[selectedDay]
-    val isRestDay = currentSplit == null
-    val workoutName = currentSplit?.first ?: "Rest"
-    val exercises = currentSplit?.second ?: emptyList()
-    val allExercises = split.values.flatMap { it.second }
+    val selectedDay = uiState.splitDays.getOrNull(uiState.selectedDay)
+        ?: defaultRestDay(uiState.selectedDay)
+    val activeDayIndex = uiState.activeSession?.dayOfWeek ?: uiState.selectedDay
+    val activeDay = uiState.splitDays.getOrNull(activeDayIndex) ?: defaultRestDay(activeDayIndex)
 
     Box(modifier = Modifier.fillMaxSize().background(BgBase)) {
         Column(
@@ -228,38 +136,30 @@ fun WorkoutScreen() {
                 .fillMaxSize()
                 .statusBarsPadding(),
         ) {
-            // Day pill row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                (0..6).forEach { dayIdx ->
-                    val dayData = split[dayIdx]
-                    val typeLabel = when {
-                        dayData == null -> ""
-                        else -> (dayData.first.split(" ").firstOrNull() ?: dayData.first).uppercase()
-                    }
+                uiState.splitDays.ifEmpty { (0..6).map { defaultRestDay(it) } }.forEach { day ->
                     WeekdayButton(
-                        dayLabel = dayNames[dayIdx],
-                        typeLabel = typeLabel,
-                        isSelected = selectedDay == dayIdx,
-                        onClick = { selectedDay = dayIdx },
+                        dayLabel = WeekMath.dayNames[day.dayOfWeek],
+                        typeLabel = day.typeLabel,
+                        isSelected = uiState.selectedDay == day.dayOfWeek,
+                        onClick = { viewModel.selectDay(day.dayOfWeek) },
                         modifier = Modifier.weight(1f),
                     )
                 }
             }
 
-            // Workout name
             Text(
-                text = workoutName,
+                text = selectedDay.workoutName,
                 style = MaterialTheme.typography.headlineMedium,
                 color = TextPrimary,
                 modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp),
             )
 
-            // Exercise list
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -267,7 +167,7 @@ fun WorkoutScreen() {
                     .padding(horizontal = 20.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (isRestDay) {
+                if (selectedDay.isRestDay) {
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(vertical = 60.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -281,44 +181,66 @@ fun WorkoutScreen() {
                         )
                     }
                 } else {
-                    exercises.forEach { ex ->
+                    selectedDay.exercises.forEach { ex ->
                         ExerciseCard(
                             ex = ex,
-                            sets = emptyList(),
-                            onInfo = { historyExId = ex.id },
+                            onInfo = { viewModel.openHistory(ex.id) },
                         )
                     }
                 }
             }
 
-            // Start Workout button
-            if (!isRestDay) {
-                Box(
-                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
-                ) {
-                    WorkoutCtaButton("Start Workout") { showActiveWorkout = true }
+            when {
+                uiState.activeSession != null && !uiState.showActiveWorkout -> {
+                    Box(
+                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
+                    ) {
+                        WorkoutCtaButton("Resume Workout", onClick = viewModel::resumeWorkout)
+                    }
+                }
+                !selectedDay.isRestDay && uiState.activeSession == null -> {
+                    Box(
+                        modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
+                    ) {
+                        WorkoutCtaButton("Start Workout", onClick = viewModel::startWorkout)
+                    }
                 }
             }
         }
 
-        if (showActiveWorkout) {
-            FullscreenWorkoutSheet(onDismissRequest = { showActiveWorkout = false }) {
-                Column(
+        if (uiState.showActiveWorkout && uiState.activeSession != null) {
+            FullscreenOverlay(onBack = viewModel::minimizeActiveWorkout) {
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                        .padding(horizontal = 20.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        "ACTIVE WORKOUT",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = TextTertiary,
-                    )
-                    Text(
-                        workoutName,
-                        style = MaterialTheme.typography.screenTitle,
-                        color = TextPrimary,
-                    )
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("ACTIVE WORKOUT", style = MaterialTheme.typography.labelMedium, color = TextTertiary)
+                        Text(activeDay.workoutName, style = MaterialTheme.typography.screenTitle, color = TextPrimary)
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            WorkoutViewModel.formatElapsed(uiState.elapsedMillis),
+                            style = MaterialTheme.typography.monoBodyEmphasis,
+                            color = Green500,
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color.White.copy(alpha = 0.06f))
+                                .clickableNoRipple { viewModel.discardWorkout() },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(Lucide.X, contentDescription = "Discard workout", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                        }
+                    }
                 }
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
 
@@ -329,22 +251,20 @@ fun WorkoutScreen() {
                         .padding(horizontal = 20.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    exercises.forEach { ex ->
-                        val sets = activeSets[ex.id] ?: emptyList()
-                        val workingSetCount = sets.count { !it.isWarmup }
-                        val isDone = workingSetCount >= ex.sets
+                    activeDay.exercises.forEach { ex ->
+                        val workingSetCount = ex.loggedSets.count { !it.isWarmup }
+                        val isDone = workingSetCount >= ex.targetSets
                         ExerciseCard(
                             ex = ex,
-                            sets = sets,
                             isDone = isDone,
-                            logLabel = if (isDone) "Done" else "+ Set ${workingSetCount + 1}/${ex.sets}",
+                            logLabel = if (isDone) "Done" else "+ Set ${workingSetCount + 1}/${ex.targetSets}",
                             onLog = {
-                                logSheetExId = ex.id
-                                logWeight = ex.refWeight
-                                logReps = ex.reps
+                                logSheetExerciseId = ex.id
+                                logWeightDisplay = WeightFormat.kgToDisplay(ex.refWeightKg, uiState.weightUnit)
+                                logReps = ex.refReps
                                 isWarmup = false
                             },
-                            onInfo = { historyExId = ex.id },
+                            onInfo = { viewModel.openHistory(ex.id) },
                         )
                     }
                 }
@@ -352,18 +272,19 @@ fun WorkoutScreen() {
                 Box(
                     modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 24.dp),
                 ) {
-                    WorkoutCtaButton("Finish Workout") { showActiveWorkout = false }
+                    WorkoutCtaButton("Finish Workout", onClick = viewModel::finishWorkout)
                 }
             }
         }
 
-        if (historyExId != null) {
-            val exId = historyExId
-            val historyExercise = allExercises.find { it.id == exId }
-            val exName = historyExercise?.name ?: ""
-            val exHistory = historyExercise?.let { historySessions(it, activeSets[it.id].orEmpty()) }.orEmpty()
+        if (uiState.historyExerciseId != null) {
+            val historyPoints = uiState.historySessions.mapNotNull { session ->
+                session.topWeightKg?.let { top ->
+                    session.date to WeightFormat.kgToDisplay(top, uiState.weightUnit)
+                }
+            }
 
-            FullscreenWorkoutSheet(onDismissRequest = { historyExId = null; activeHistoryPt = null }) {
+            FullscreenOverlay(onBack = { viewModel.closeHistory(); activeHistoryPt = null }) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -375,27 +296,22 @@ fun WorkoutScreen() {
                             .size(34.dp)
                             .clip(RoundedCornerShape(10.dp))
                             .background(Color.White.copy(alpha = 0.06f))
-                            .clickableNoRipple { historyExId = null; activeHistoryPt = null },
+                            .clickableNoRipple { viewModel.closeHistory(); activeHistoryPt = null },
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(Lucide.ArrowLeft, null, tint = TextSecondary, modifier = Modifier.size(18.dp))
                     }
                     Spacer(Modifier.width(12.dp))
-                    Text(
-                        exName,
-                        style = MaterialTheme.typography.screenTitle,
-                        color = TextPrimary,
-                    )
+                    Text(uiState.historyExerciseName, style = MaterialTheme.typography.screenTitle, color = TextPrimary)
                 }
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
 
                 HistoryChart(
-                    points = exHistory.mapNotNull { session ->
-                        topWorkingWeight(session.sets)?.let { topWeight -> session.date to topWeight }
-                    },
+                    points = historyPoints,
                     activePt = activeHistoryPt,
                     onPtClick = { activeHistoryPt = if (activeHistoryPt == it) null else it },
                     onDismiss = { activeHistoryPt = null },
+                    weightUnit = uiState.weightUnit,
                 )
 
                 Column(
@@ -405,40 +321,35 @@ fun WorkoutScreen() {
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    if (exHistory.isEmpty()) {
+                    if (uiState.isLoadingHistory) {
+                        Text("Loading…", style = MaterialTheme.typography.caption, color = TextTertiary)
+                    } else if (uiState.historySessions.isEmpty()) {
                         Column(
                             modifier = Modifier.fillMaxWidth().padding(40.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             Icon(Lucide.Clock, null, tint = TextTertiary.copy(alpha = 0.4f), modifier = Modifier.size(28.dp))
-                            Text(
-                                "No history yet",
-                                style = MaterialTheme.typography.caption,
-                                color = TextTertiary,
-                            )
+                            Text("No history yet", style = MaterialTheme.typography.caption, color = TextTertiary)
                         }
                     } else {
-                        exHistory
-                            .sortedByDescending { it.date }
-                            .forEach { session ->
-                                HistorySessionCard(session = session)
-                            }
+                        uiState.historySessions.forEach { session ->
+                            HistorySessionCard(session = session)
+                        }
                     }
                 }
             }
         }
     }
 
-    // Log Set bottom sheet
-    if (logSheetExId != null) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-        val exId = logSheetExId!!
-        val ex = exercises.find { it.id == exId }
+    if (logSheetExerciseId != null) {
+        val exerciseId = logSheetExerciseId!!
+        val ex = activeDay.exercises.find { it.id == exerciseId }
+        val unit = uiState.weightUnit
 
         ModalBottomSheet(
-            onDismissRequest = { logSheetExId = null },
-            sheetState = sheetState,
+            onDismissRequest = { logSheetExerciseId = null },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             containerColor = BgBase,
             dragHandle = {
                 Box(
@@ -459,24 +370,22 @@ fun WorkoutScreen() {
                     .navigationBarsPadding(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(
-                    ex?.name ?: "",
-                    style = MaterialTheme.typography.titleSmall,
-                    color = TextPrimary,
-                    textAlign = TextAlign.Center,
-                )
+                Text(ex?.name ?: "", style = MaterialTheme.typography.titleSmall, color = TextPrimary, textAlign = TextAlign.Center)
                 Spacer(Modifier.height(24.dp))
 
-                // Weight
-                AdjustRow(
-                    label = "Weight (${ex?.unit ?: "kg"})",
-                    display = if ((logWeight * 10).roundToInt() % 10 == 0) "${logWeight.toInt()}" else "%.1f".format(logWeight),
-                    onDec = { logWeight = maxOf(0f, logWeight - 2.5f) },
-                    onInc = { logWeight += 2.5f },
+                val weightLabel = if (ex?.isBodyweight == true) {
+                    "Added weight (${WeightFormat.unitLabel(unit)})"
+                } else {
+                    "Weight (${WeightFormat.unitLabel(unit)})"
+                }
+                WeightAdjustRow(
+                    label = weightLabel,
+                    displayValue = logWeightDisplay,
+                    weightUnit = unit,
+                    onDisplayChange = { logWeightDisplay = it },
                 )
                 Spacer(Modifier.height(20.dp))
 
-                // Reps
                 AdjustRow(
                     label = "Reps",
                     display = "$logReps",
@@ -485,31 +394,26 @@ fun WorkoutScreen() {
                 )
                 Spacer(Modifier.height(28.dp))
 
-                // Warmup toggle
                 Row(
                     modifier = Modifier
                         .width(LogSetControlRowWidth)
-                        .clickableNoRipple { isWarmup = !isWarmup }
-                        .padding(vertical = 0.dp),
+                        .clickableNoRipple { isWarmup = !isWarmup },
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        "Warmup set",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextSecondary,
-                    )
+                    Text("Warmup set", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
                     WarmupToggle(on = isWarmup, onClick = { isWarmup = !isWarmup })
                 }
                 Spacer(Modifier.height(28.dp))
 
-                // Confirm
                 WorkoutCtaButton(if (isWarmup) "Log Warmup" else "Log Set") {
-                    val prev = activeSets[exId] ?: emptyList()
-                    val isNewPr = !isWarmup && ex != null && logWeight > previousBestWeight(ex, prev)
-                    val newSet = SetEntry(logWeight, logReps, isWarmup, isPR = isNewPr)
-                    activeSets = activeSets + (exId to (prev + newSet))
-                    logSheetExId = null
+                    viewModel.logSet(
+                        exerciseId = exerciseId,
+                        weightKg = WeightFormat.displayToKg(logWeightDisplay, unit),
+                        reps = logReps,
+                        isWarmup = isWarmup,
+                    )
+                    logSheetExerciseId = null
                 }
 
                 Spacer(Modifier.height(4.dp))
@@ -517,7 +421,7 @@ fun WorkoutScreen() {
                     "Cancel",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickableNoRipple { logSheetExId = null }
+                        .clickableNoRipple { logSheetExerciseId = null }
                         .padding(vertical = 10.dp),
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.bodyMedium,
@@ -528,10 +432,18 @@ fun WorkoutScreen() {
     }
 }
 
+private fun defaultRestDay(dayOfWeek: Int) = SplitDayUi(
+    dayOfWeek = dayOfWeek,
+    workoutName = "Rest",
+    isRestDay = true,
+    exercises = emptyList(),
+    typeLabel = "",
+)
+
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 private fun SetBadgeRow(
-    sets: List<SetEntry>,
+    sets: List<SetUi>,
     modifier: Modifier = Modifier,
 ) {
     FlowRow(
@@ -540,7 +452,7 @@ private fun SetBadgeRow(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         sets.forEach { s ->
-            val label = "${formatWeight(s.weight)} × ${s.reps}"
+            val label = s.displayLabel
             val pillShape = RoundedCornerShape(20.dp)
             when {
                 s.isWarmup -> {
@@ -559,7 +471,7 @@ private fun SetBadgeRow(
                         )
                     }
                 }
-                s.isPR -> {
+                s.isPr -> {
                     Row(
                         modifier = Modifier
                             .clip(pillShape)
@@ -598,48 +510,105 @@ private fun SetBadgeRow(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FullscreenWorkoutSheet(
-    onDismissRequest: () -> Unit,
+private fun FullscreenOverlay(
+    onBack: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val density = LocalDensity.current
-    val screenHeightPx = with(density) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
-    val dismissThresholdPx = screenHeightPx / 3f
-    var currentOffsetPx by remember { mutableFloatStateOf(0f) }
-
-    val sheetState = rememberModalBottomSheetState(
-        skipPartiallyExpanded = true,
-        confirmValueChange = { targetValue ->
-            targetValue != SheetValue.Hidden || currentOffsetPx >= dismissThresholdPx
-        },
-    )
-
-    LaunchedEffect(sheetState) {
-        snapshotFlow { runCatching { sheetState.requireOffset() }.getOrNull() }
-            .collect { offset ->
-                if (offset != null) currentOffsetPx = offset
-            }
-    }
-
-    ModalBottomSheet(
-        onDismissRequest = onDismissRequest,
-        sheetState = sheetState,
-        modifier = Modifier.fillMaxSize(),
-        shape = RoundedCornerShape(0.dp),
-        containerColor = BgBase,
-        dragHandle = null,
+    BackHandler(onBack = onBack)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BgBase)
+            .statusBarsPadding()
+            .navigationBarsPadding(),
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding(),
+            modifier = Modifier.fillMaxSize(),
             content = content,
         )
     }
 }
+
+@Composable
+private fun WeightAdjustRow(
+    label: String,
+    displayValue: Float,
+    weightUnit: WeightUnit,
+    onDisplayChange: (Float) -> Unit,
+) {
+    var editing by remember { mutableStateOf(false) }
+    var draft by remember(displayValue, editing) {
+        mutableStateOf(formatWeightDisplay(displayValue))
+    }
+    val stepDisplay = WeightFormat.kgToDisplay(WeightFormat.STEP_KG, weightUnit)
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            label.uppercase(),
+            style = MaterialTheme.typography.labelLargeCaps,
+            color = TextTertiary,
+        )
+        Spacer(Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.width(LogSetControlRowWidth),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AdjBtn("−") {
+                editing = false
+                onDisplayChange(maxOf(0f, displayValue - stepDisplay))
+            }
+            if (editing) {
+                BasicTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    textStyle = MaterialTheme.typography.headlineLarge.copy(
+                        color = TextPrimary,
+                        textAlign = TextAlign.Center,
+                    ),
+                    cursorBrush = SolidColor(Green500),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.width(80.dp),
+                )
+            } else {
+                Text(
+                    formatWeightDisplay(displayValue),
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = TextPrimary,
+                    modifier = Modifier
+                        .width(80.dp)
+                        .clickableNoRipple {
+                            draft = formatWeightDisplay(displayValue)
+                            editing = true
+                        },
+                    textAlign = TextAlign.Center,
+                )
+            }
+            AdjBtn("+") {
+                editing = false
+                onDisplayChange(displayValue + stepDisplay)
+            }
+        }
+        if (editing) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Done",
+                modifier = Modifier.clickableNoRipple {
+                    val parsed = draft.replace(',', '.').toFloatOrNull() ?: displayValue
+                    onDisplayChange(maxOf(0f, parsed))
+                    editing = false
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = Green500,
+            )
+        }
+    }
+}
+
+private fun formatWeightDisplay(value: Float): String =
+    if ((value * 10).roundToInt() % 10 == 0) "${value.toInt()}" else "%.1f".format(value)
 
 @Composable
 private fun WeekdayButton(
@@ -693,8 +662,7 @@ private fun WeekdayButton(
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 private fun ExerciseCard(
-    ex: ExerciseDef,
-    sets: List<SetEntry>,
+    ex: ExerciseUi,
     logLabel: String? = null,
     isDone: Boolean = false,
     onLog: (() -> Unit)? = null,
@@ -770,20 +738,20 @@ private fun ExerciseCard(
         }
 
         Text(
-            exerciseDetailsLine(ex),
+            ex.detailsLine,
             style = MaterialTheme.typography.exerciseDetails,
             color = TextTertiary,
             modifier = Modifier.padding(top = 4.dp),
         )
 
-        if (sets.isNotEmpty()) {
-            SetBadgeRow(sets = sets, modifier = Modifier.fillMaxWidth().padding(top = 2.dp))
+        if (ex.loggedSets.isNotEmpty()) {
+            SetBadgeRow(sets = ex.loggedSets, modifier = Modifier.fillMaxWidth().padding(top = 2.dp))
         }
     }
 }
 
 @Composable
-private fun HistorySessionCard(session: HistorySession) {
+private fun HistorySessionCard(session: HistorySessionUi) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -793,7 +761,7 @@ private fun HistorySessionCard(session: HistorySession) {
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Text(
-            text = formatShortDate(session.date),
+            text = session.dateLabel,
             style = MaterialTheme.typography.caption,
             color = TextTertiary,
         )
@@ -807,7 +775,7 @@ private fun HistorySessionCard(session: HistorySession) {
 }
 
 @Composable
-private fun WorkoutCtaButton(label: String, onClick: () -> Unit) {
+internal fun WorkoutCtaButton(label: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -913,6 +881,7 @@ private fun HistoryChart(
     activePt: Int?,
     onPtClick: (Int) -> Unit,
     onDismiss: () -> Unit,
+    weightUnit: WeightUnit,
 ) {
     if (points.isEmpty()) return
 
@@ -1042,8 +1011,8 @@ private fun HistoryChart(
                         val yFrac = 1f - (weight - yMin) / (yMax - yMin)
                         val dotXDp = maxWidth * xFrac
                         val dotYDp = maxHeight * yFrac
-                        val tooltipDate = formatShortDate(date)
-                        val tooltipValue = "${formatWeight(weight)} kg"
+                        val tooltipDate = "${date.dayOfMonth} ${date.month.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.ENGLISH)}"
+                        val tooltipValue = "${if ((weight * 10).roundToInt() % 10 == 0) weight.toInt() else "%.1f".format(weight)} ${WeightFormat.unitLabel(weightUnit)}"
                         ChartTooltip(
                             chartWidth = maxWidth,
                             chartHeight = maxHeight,
