@@ -113,7 +113,6 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val showStrengthPrSettings by viewModel.showStrengthPrSettings.collectAsStateWithLifecycle()
-    val strengthPrSelection by viewModel.strengthPrSelection.collectAsStateWithLifecycle()
     val profile = uiState.profile
 
     var prTab by rememberSaveable { mutableIntStateOf(0) }
@@ -313,8 +312,6 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
         ) {
             StrengthPrSettingsScreen(
-                initialNames = strengthPrSelection,
-                onSave = viewModel::saveStrengthPrSelection,
                 onClose = viewModel::closeStrengthPrSettings,
             )
         }

@@ -48,3 +48,31 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         )
     }
 }
+
+val MIGRATION_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `strength_pr_exercises` (
+                `name` TEXT NOT NULL,
+                `sortOrder` INTEGER NOT NULL,
+                PRIMARY KEY(`name`)
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT OR IGNORE INTO `strength_pr_exercises` (`name`, `sortOrder`)
+            SELECT `exerciseName`, `sortOrder` FROM `strength_pr_selection`
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            INSERT OR IGNORE INTO `strength_pr_exercises` (`name`, `sortOrder`)
+            SELECT `exerciseName`, 1000 + MIN(`id`) FROM `strength_pr_entries`
+            WHERE `exerciseName` NOT IN (SELECT `name` FROM `strength_pr_exercises`)
+            GROUP BY `exerciseName`
+            """.trimIndent(),
+        )
+    }
+}
