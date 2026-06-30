@@ -925,11 +925,14 @@ private fun HistoryChart(
     val yMax = maxWeight + pad
 
     val tickStep = weightTickStep(span)
-    val tLow = (Math.ceil(minWeight / tickStep.toDouble()) * tickStep).toFloat()
-    val tHigh = (Math.floor(maxWeight / tickStep.toDouble()) * tickStep).toFloat()
-    val tMid = (Math.round((tLow + tHigh) / 2f / tickStep) * tickStep).toFloat()
-    val yTicks = if (tMid != tLow && tMid != tHigh) listOf(tHigh, tMid, tLow) else listOf(tHigh, tLow)
-
+    val tLow = (Math.ceil(yMin / tickStep.toDouble()) * tickStep).toFloat()
+    val tHigh = (Math.floor(yMax / tickStep.toDouble()) * tickStep).toFloat()
+    val yTicks = if (tLow > tHigh) {
+        listOf(Math.round(minWeight / tickStep) * tickStep)
+    } else {
+        val tMid = (Math.round((tLow + tHigh) / 2f / tickStep) * tickStep).toFloat()
+        if (tMid != tLow && tMid != tHigh) listOf(tHigh, tMid, tLow) else listOf(tHigh, tLow)
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
