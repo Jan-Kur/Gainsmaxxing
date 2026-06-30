@@ -133,11 +133,16 @@ class WorkoutViewModel @Inject constructor(
         viewModelScope.launch {
             while (true) {
                 val session = activeSession.value
-                elapsedMillis.value = if (session != null) {
-                    System.currentTimeMillis() - session.startedAt.toEpochMilli()
-                } else {
-                    0L
+                if (session == null) {
+                    if (elapsedMillis.value != 0L) {
+                        elapsedMillis.value = 0L
+                        refreshUiState()
+                    }
+                    kotlinx.coroutines.delay(5_000)
+                    continue
                 }
+
+                elapsedMillis.value = System.currentTimeMillis() - session.startedAt.toEpochMilli()
                 refreshUiState()
                 kotlinx.coroutines.delay(1_000)
             }
