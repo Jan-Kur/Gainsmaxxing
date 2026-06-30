@@ -29,9 +29,10 @@ class StrengthPrSettingsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(StrengthPrSettingsUiState())
     val uiState: StateFlow<StrengthPrSettingsUiState> = _uiState.asStateFlow()
 
-    init {
-        load()
-    }
+    // No eager load here; the screen calls load() when it becomes visible so it refreshes on reopen.
+    // init {
+    //     load()
+    // }
 
     fun load() {
         viewModelScope.launch {
