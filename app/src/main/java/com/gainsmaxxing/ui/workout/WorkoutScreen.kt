@@ -102,6 +102,7 @@ import kotlin.math.roundToInt
 
 data class ExerciseDef(val id: String, val name: String, val sets: Int, val reps: Int, val refWeight: Float, val unit: String)
 data class SetEntry(val weight: Float, val reps: Int, val isWarmup: Boolean, val isPR: Boolean = false)
+private data class HistorySession(val date: LocalDate, val sets: List<SetEntry>)
 
 private val split = mapOf(
     1 to Pair("Upper A", listOf(
@@ -146,9 +147,60 @@ private fun formatWeight(w: Float): String =
 
 private val LogSetControlRowWidth = 240.dp
 
+private fun formatShortDate(date: LocalDate): String =
+    "${date.dayOfMonth} ${date.month.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH)}"
+
 private fun exerciseDetailsLine(ex: ExerciseDef): String {
     val weightPart = if (ex.unit == "BW") "+${ex.refWeight.toInt()} kg BW" else "${formatWeight(ex.refWeight)} kg"
     return "${ex.sets} sets · ${ex.reps} reps · $weightPart"
+}
+
+private fun weightStep(ex: ExerciseDef): Float = when {
+    ex.refWeight < 20f -> 1f
+    ex.refWeight < 60f -> 2f
+    else -> 2.5f
+}
+
+private fun topWorkingWeight(sets: List<SetEntry>): Float? =
+    sets.filterNot { it.isWarmup }.maxOfOrNull { it.weight }
+
+private fun mockHistorySessions(ex: ExerciseDef): List<HistorySession> {
+    val today = LocalDate.now()
+    val step = weightStep(ex)
+    val historicalTopWeights = listOf(5f, 4f, 4f, 3f, 3f, 2f, 2f, 1f, 1f, 1f, 0f, 0f)
+        .map { offset -> maxOf(step, ex.refWeight - (offset * step)) }
+
+    return historicalTopWeights.mapIndexed { index, topWeight ->
+        val repsOffset = ((index % 3) - 1).coerceAtLeast(-1)
+        val topSetReps = maxOf(1, ex.reps + repsOffset)
+        val backoffWeight = maxOf(step, topWeight - (2 * step))
+        HistorySession(
+            date = today.minusWeeks((historicalTopWeights.lastIndex - index).toLong()),
+            sets = listOf(
+                SetEntry(weight = backoffWeight, reps = ex.reps + 2, isWarmup = false),
+                SetEntry(weight = topWeight, reps = topSetReps, isWarmup = false),
+            ),
+        )
+    }
+}
+
+private fun historySessions(ex: ExerciseDef, activeSets: List<SetEntry>): List<HistorySession> {
+    val sessions = mockHistorySessions(ex)
+    val workingSets = activeSets.filterNot { it.isWarmup }
+    return if (workingSets.isEmpty()) sessions else sessions + HistorySession(LocalDate.now(), activeSets)
+}
+
+private fun previousBestWeight(ex: ExerciseDef, loggedSets: List<SetEntry>): Float {
+    val historicalBest = mockHistorySessions(ex).maxOfOrNull { session -> topWorkingWeight(session.sets) ?: 0f } ?: 0f
+    val activeWorkoutBest = topWorkingWeight(loggedSets) ?: 0f
+    return maxOf(historicalBest, activeWorkoutBest)
+}
+
+private fun weightTickStep(range: Float): Float = when {
+    range > 30f -> 20f
+    range > 15f -> 10f
+    range > 7.5f -> 5f
+    else -> 2.5f
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -168,6 +220,7 @@ fun WorkoutScreen() {
     val isRestDay = currentSplit == null
     val workoutName = currentSplit?.first ?: "Rest"
     val exercises = currentSplit?.second ?: emptyList()
+    val allExercises = split.values.flatMap { it.second }
 
     Box(modifier = Modifier.fillMaxSize().background(BgBase)) {
         Column(
@@ -179,7 +232,7 @@ fun WorkoutScreen() {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 6.dp),
+                    .padding(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 (0..6).forEach { dayIdx ->
@@ -203,7 +256,7 @@ fun WorkoutScreen() {
                 text = workoutName,
                 style = MaterialTheme.typography.headlineMedium,
                 color = TextPrimary,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp),
             )
 
             // Exercise list
@@ -254,6 +307,7 @@ fun WorkoutScreen() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
                         "ACTIVE WORKOUT",
@@ -305,7 +359,9 @@ fun WorkoutScreen() {
 
         if (historyExId != null) {
             val exId = historyExId
-            val exName = exercises.find { it.id == exId }?.name ?: (split.values.flatMap { it.second }.find { it.id == exId }?.name ?: "")
+            val historyExercise = allExercises.find { it.id == exId }
+            val exName = historyExercise?.name ?: ""
+            val exHistory = historyExercise?.let { historySessions(it, activeSets[it.id].orEmpty()) }.orEmpty()
 
             FullscreenWorkoutSheet(onDismissRequest = { historyExId = null; activeHistoryPt = null }) {
                 Row(
@@ -333,32 +389,41 @@ fun WorkoutScreen() {
                 }
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.08f)))
 
-                // 1RM chart
                 HistoryChart(
+                    points = exHistory.mapNotNull { session ->
+                        topWorkingWeight(session.sets)?.let { topWeight -> session.date to topWeight }
+                    },
                     activePt = activeHistoryPt,
                     onPtClick = { activeHistoryPt = if (activeHistoryPt == it) null else it },
                     onDismiss = { activeHistoryPt = null },
                 )
 
-                // Session list
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .verticalScroll(rememberScrollState())
                         .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    // Empty state
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(40.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Icon(Lucide.Clock, null, tint = TextTertiary.copy(alpha = 0.4f), modifier = Modifier.size(28.dp))
-                        Text(
-                            "No history yet",
-                            style = MaterialTheme.typography.caption,
-                            color = TextTertiary,
-                        )
+                    if (exHistory.isEmpty()) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(40.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Icon(Lucide.Clock, null, tint = TextTertiary.copy(alpha = 0.4f), modifier = Modifier.size(28.dp))
+                            Text(
+                                "No history yet",
+                                style = MaterialTheme.typography.caption,
+                                color = TextTertiary,
+                            )
+                        }
+                    } else {
+                        exHistory
+                            .sortedByDescending { it.date }
+                            .forEach { session ->
+                                HistorySessionCard(session = session)
+                            }
                     }
                 }
             }
@@ -440,8 +505,9 @@ fun WorkoutScreen() {
 
                 // Confirm
                 WorkoutCtaButton(if (isWarmup) "Log Warmup" else "Log Set") {
-                    val newSet = SetEntry(logWeight, logReps, isWarmup)
                     val prev = activeSets[exId] ?: emptyList()
+                    val isNewPr = !isWarmup && ex != null && logWeight > previousBestWeight(ex, prev)
+                    val newSet = SetEntry(logWeight, logReps, isWarmup, isPR = isNewPr)
                     activeSets = activeSets + (exId to (prev + newSet))
                     logSheetExId = null
                 }
@@ -457,6 +523,76 @@ fun WorkoutScreen() {
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextTertiary,
                 )
+            }
+        }
+    }
+}
+
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+private fun SetBadgeRow(
+    sets: List<SetEntry>,
+    modifier: Modifier = Modifier,
+) {
+    FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        sets.forEach { s ->
+            val label = "${formatWeight(s.weight)} × ${s.reps}"
+            val pillShape = RoundedCornerShape(20.dp)
+            when {
+                s.isWarmup -> {
+                    Row(
+                        modifier = Modifier
+                            .clip(pillShape)
+                            .background(Surface3)
+                            .border(1.dp, TextTertiary.copy(alpha = 0.2f), pillShape)
+                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.setPill,
+                            color = TextTertiary,
+                        )
+                    }
+                }
+                s.isPR -> {
+                    Row(
+                        modifier = Modifier
+                            .clip(pillShape)
+                            .background(SetPillPrBg)
+                            .border(1.dp, SetPillPrBorder, pillShape)
+                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.setPill,
+                            color = SetPillPrText,
+                        )
+                        Icon(Lucide.Trophy, null, tint = SetPillPrText, modifier = Modifier.size(11.dp))
+                    }
+                }
+                else -> {
+                    Row(
+                        modifier = Modifier
+                            .clip(pillShape)
+                            .background(Green500.copy(alpha = 0.12f))
+                            .border(1.dp, Green500.copy(alpha = 0.28f), pillShape)
+                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.setPill,
+                            color = Green500,
+                        )
+                    }
+                }
             }
         }
     }
@@ -641,69 +777,32 @@ private fun ExerciseCard(
         )
 
         if (sets.isNotEmpty()) {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                sets.forEach { s ->
-                    val label = "${formatWeight(s.weight)} x ${s.reps}"
-                    val pillShape = RoundedCornerShape(20.dp)
-                    when {
-                        s.isWarmup -> {
-                            Row(
-                                modifier = Modifier
-                                    .clip(pillShape)
-                                    .background(Surface3)
-                                    .border(1.dp, TextTertiary.copy(alpha = 0.2f), pillShape)
-                                    .padding(horizontal = 10.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    label,
-                                    style = MaterialTheme.typography.setPill,
-                                    color = TextTertiary,
-                                )
-                            }
-                        }
-                        s.isPR -> {
-                            Row(
-                                modifier = Modifier
-                                    .clip(pillShape)
-                                    .background(SetPillPrBg)
-                                    .border(1.dp, SetPillPrBorder, pillShape)
-                                    .padding(horizontal = 10.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                Text(
-                                    label,
-                                    style = MaterialTheme.typography.setPill,
-                                    color = SetPillPrText,
-                                )
-                                Icon(Lucide.Trophy, null, tint = SetPillPrText, modifier = Modifier.size(11.dp))
-                            }
-                        }
-                        else -> {
-                            Row(
-                                modifier = Modifier
-                                    .clip(pillShape)
-                                    .background(Green500.copy(alpha = 0.12f))
-                                    .border(1.dp, Green500.copy(alpha = 0.28f), pillShape)
-                                    .padding(horizontal = 10.dp, vertical = 5.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    label,
-                                    style = MaterialTheme.typography.setPill,
-                                    color = Green500,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+            SetBadgeRow(sets = sets, modifier = Modifier.fillMaxWidth().padding(top = 2.dp))
         }
+    }
+}
+
+@Composable
+private fun HistorySessionCard(session: HistorySession) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Surface1)
+            .border(1.dp, BorderSubtle, RoundedCornerShape(16.dp))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Text(
+            text = formatShortDate(session.date),
+            style = MaterialTheme.typography.caption,
+            color = TextTertiary,
+        )
+        SetBadgeRow(
+            sets = session.sets,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 10.dp),
+        )
     }
 }
 
@@ -810,27 +909,24 @@ private fun WarmupToggle(on: Boolean, onClick: () -> Unit) {
 
 @Composable
 private fun HistoryChart(
+    points: List<Pair<LocalDate, Float>>,
     activePt: Int?,
     onPtClick: (Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val today = LocalDate.now()
-    val pts = (11 downTo 0).map { i ->
-        val date = today.minusWeeks(i.toLong())
-        val rm = 90f + (12 - i) * 4f + (Math.sin(i * 1.3) * 3).toFloat()
-        Pair(date, rm)
-    }
+    if (points.isEmpty()) return
 
     val chartHeightDp = 110.dp
-    val minRm = pts.minOf { it.second }
-    val maxRm = pts.maxOf { it.second }
-    val pad = (maxRm - minRm) * 0.14f
-    val yMin = minRm - pad
-    val yMax = maxRm + pad
+    val minWeight = points.minOf { it.second }
+    val maxWeight = points.maxOf { it.second }
+    val span = (maxWeight - minWeight).coerceAtLeast(2.5f)
+    val pad = span * 0.14f
+    val yMin = maxOf(0f, minWeight - pad)
+    val yMax = maxWeight + pad
 
-    val tickStep = if (maxRm - minRm > 30) 20f else 10f
-    val tLow = (Math.ceil(minRm / tickStep.toDouble()) * tickStep).toFloat()
-    val tHigh = (Math.floor(maxRm / tickStep.toDouble()) * tickStep).toFloat()
+    val tickStep = weightTickStep(span)
+    val tLow = (Math.ceil(minWeight / tickStep.toDouble()) * tickStep).toFloat()
+    val tHigh = (Math.floor(maxWeight / tickStep.toDouble()) * tickStep).toFloat()
     val tMid = (Math.round((tLow + tHigh) / 2f / tickStep) * tickStep).toFloat()
     val yTicks = if (tMid != tLow && tMid != tHigh) listOf(tHigh, tMid, tLow) else listOf(tHigh, tLow)
 
@@ -845,7 +941,7 @@ private fun HistoryChart(
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Text(
-            "EST. 1RM OVER TIME",
+            "TOP SET WEIGHT",
             style = MaterialTheme.typography.labelLargeCaps,
             color = TextTertiary,
         )
@@ -874,18 +970,18 @@ private fun HistoryChart(
                     Canvas(
                         modifier = Modifier
                             .fillMaxSize()
-                            .pointerInput(pts, yMin, yMax) {
+                            .pointerInput(points, yMin, yMax) {
                                 val touchSlop = 36.dp.toPx()
                                 detectTapGestures { offset ->
                                     val w = size.width.toFloat()
                                     val h = size.height.toFloat()
-                                    val nearest = pts.indices.minByOrNull { i ->
-                                        val x = (i.toFloat() / (pts.size - 1)) * w
+                                    val nearest = points.indices.minByOrNull { i ->
+                                        val x = (i.toFloat() / (points.size - 1).coerceAtLeast(1)) * w
                                         Math.abs(offset.x - x)
                                     }
                                     val onPoint = nearest != null && run {
-                                        val x = (nearest.toFloat() / (pts.size - 1)) * w
-                                        val y = h - ((pts[nearest].second - yMin) / (yMax - yMin)) * h
+                                        val x = (nearest.toFloat() / (points.size - 1).coerceAtLeast(1)) * w
+                                        val y = h - ((points[nearest].second - yMin) / (yMax - yMin)) * h
                                         Math.hypot((offset.x - x).toDouble(), (offset.y - y).toDouble()) <= touchSlop
                                     }
                                     if (onPoint) onPtClick(nearest!!) else onDismiss()
@@ -894,9 +990,9 @@ private fun HistoryChart(
                     ) {
                         val w = size.width
                         val h = size.height
-                        fun toX(i: Int) = (i.toFloat() / (pts.size - 1)) * w
-                        fun toY(rm: Float) = h - ((rm - yMin) / (yMax - yMin)) * h
-                        val coords = pts.indices.map { i -> Offset(toX(i), toY(pts[i].second)) }
+                        fun toX(i: Int) = (i.toFloat() / (points.size - 1).coerceAtLeast(1)) * w
+                        fun toY(weight: Float) = h - ((weight - yMin) / (yMax - yMin)) * h
+                        val coords = points.indices.map { i -> Offset(toX(i), toY(points[i].second)) }
 
                         yTicks.forEach { tick ->
                             drawLine(Color(0x0FFFFFFF), Offset(0f, toY(tick)), Offset(w, toY(tick)), 1.dp.toPx())
@@ -937,14 +1033,14 @@ private fun HistoryChart(
                         }
                     }
 
-                    if (activePt != null && activePt in pts.indices) {
-                        val (date, rm) = pts[activePt]
-                        val xFrac = activePt.toFloat() / (pts.size - 1)
-                        val yFrac = 1f - (rm - yMin) / (yMax - yMin)
+                    if (activePt != null && activePt in points.indices) {
+                        val (date, weight) = points[activePt]
+                        val xFrac = activePt.toFloat() / (points.size - 1).coerceAtLeast(1)
+                        val yFrac = 1f - (weight - yMin) / (yMax - yMin)
                         val dotXDp = maxWidth * xFrac
                         val dotYDp = maxHeight * yFrac
-                        val tooltipDate = "${date.dayOfMonth} ${date.month.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH)}"
-                        val tooltipValue = "${rm.roundToInt()} kg"
+                        val tooltipDate = formatShortDate(date)
+                        val tooltipValue = "${formatWeight(weight)} kg"
                         ChartTooltip(
                             chartWidth = maxWidth,
                             chartHeight = maxHeight,
@@ -972,14 +1068,14 @@ private fun HistoryChart(
                 BoxWithConstraints(modifier = Modifier.fillMaxWidth().height(16.dp)) {
                     val totalWidth = maxWidth
                     val monthGroups = LinkedHashMap<String, IntRange>()
-                    pts.forEachIndexed { i, (date, _) ->
+                    points.forEachIndexed { i, (date, _) ->
                         val key = "${date.year}-${date.monthValue}"
                         val existing = monthGroups[key]
                         monthGroups[key] = if (existing == null) i..i else existing.first..i
                     }
                     monthGroups.forEach { (_, range) ->
-                        val centerFrac = (range.first + range.last).toFloat() / 2f / (pts.size - 1)
-                        val label = pts[range.first].first.month.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH)
+                        val centerFrac = (range.first + range.last).toFloat() / 2f / (points.size - 1).coerceAtLeast(1)
+                        val label = points[range.first].first.month.getDisplayName(JTextStyle.SHORT, Locale.ENGLISH)
                         Box(
                             modifier = Modifier
                                 .align(Alignment.TopStart)

@@ -35,7 +35,7 @@ The landing screen. Answers "how am I progressing?" at a glance.
 
 **Personal Records section**
 
-- Two categories: Strength (pulled from workouts automatically, or entered manually) and Running (pulled from strava automatically)
+- Two categories: Strength (manual-entry 1RM records only) and Running (pulled from Strava automatically)
 - User can select which and how many exercises or distances to show records for.
 
 **Body Metrics section**
@@ -68,14 +68,14 @@ At the top of the tab are days in a week (Mon-Sun). A workout template is shown 
 
 - Displays the exercises and number of sets in the template workout in order, so the user can follow the workout plan.
 - Each exercise is marked with the number of sets the user has to perform, and a reference weight and rep count taken from the last workout. Each exercise also has a button to log a set, which opens a bottom sheet with a weight and number of reps input, both additionally controlled with buttons to increment or decrement quickly. 
-- A logged set appears as a small pill in the exercise card. If a logged set exceeds the current PR for that exercise, show a small, non-intrusive PR indicator on that set tag (e.g. a star or trophy icon). That PR should be updated automatically in the PRs section in the home tab, provided that it's selected to be shown.
+- A logged set appears as a small pill in the exercise card. If a logged set uses more weight than any previous set for that exercise, show a small, non-intrusive PR indicator on that set tag (e.g. a trophy icon). This set PR stays within the workout/exercise-history UI and does not update the Home tab Personal Records.
 - A "Finish workout" button at the bottom saves the session and returns to the split overview.
 
 **Exercise history (sub-screen)**
 
 - Accessed by long-pressing or tapping an info icon on any exercise name.
 - Shows a chronological list of every logged session for that exercise: date, and all sets performed (weight × reps).
-- Also shows a small line chart of the top set (heaviest weight × reps, expressed as estimated 1RM or simply heaviest weight) over time.
+- Also shows a small line chart of the top-set weight over time.
 - No editing past sessions — read only.
 
 ## Design
@@ -165,12 +165,12 @@ Only the decisions worth not re-deriving. Everything else (id/date types, obviou
 
 - **Weekday is `0–6`, 0 = Monday.** ⚠️ `java.time.DayOfWeek` is 1 = Monday … 7 = Sunday — convert at the boundary, never mix the two.
 - **Weights stored in kg only.** kg/lb is a display setting; no unit stored with the value.
-- **Source tagging:** records carry a `source` (manual vs strava) so origin can change without a migration. v1: running PRs from Strava, strength PRs from logged workouts (or manual), body metrics manual.
+- **Source tagging:** records carry a `source` (manual vs strava) so origin can change without a migration. v1: running PRs from Strava, strength PRs from manual 1RM entries, body metrics manual.
 - **Calendar is done-by-default:** completions are never stored. Skipping writes a skip-exception `(date, activityTypeId)` instead.
 - **Activity colour vs icon:** an activity *family* owns the colour; an activity *type* owns the icon (so long/short runs share a colour, differ by icon).
 - **Calendar → Workout link is one-way:** an activity type can open the active split's template for that weekday; workouts never write back to the calendar.
 - **Workout sessions are immutable once finished.** The reference weight/reps in an active workout = the most recent finished session for that exercise (nothing on the first one).
-- **Strength PRs are derived** from sessions (best estimated 1RM / heaviest set), recomputed when a session finishes.
+- **Set PR badges are separate from Home strength PRs.** Workout PR badges are based on the heaviest logged weight for an exercise and stay scoped to workout/history views.
 
 ## Keeping This File Current
 
@@ -189,7 +189,7 @@ Keep this section current. At the end of every session, replace stale items with
 As of the initial UI implementation:
 
 - **MVVM not wired:** all state lives in `remember`/`rememberSaveable` directly in Composables. Move to ViewModels per the architecture rule — Composables must be stateless.
-- **Room not wired:** no database entities, DAOs, or repositories exist yet. Exercise history shows an empty state placeholder.
+- **Room not wired:** no database entities, DAOs, or repositories exist yet. Workout history and PR state are still mocked in the UI.
 - **Active sets not persisted:** logged sets in the active workout are lost on process death.
 - **Hardcoded data throughout:** PRs, bodyweight points, sleep data, and the workout split are all static. These need to come from Room via repositories.
 - **Strava not integrated:** running PRs are placeholder values; OAuth + Retrofit layer for Strava is not started.
