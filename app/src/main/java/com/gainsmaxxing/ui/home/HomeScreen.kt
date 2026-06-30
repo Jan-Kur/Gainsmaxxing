@@ -287,22 +287,10 @@ fun HomeScreen(
             SettingsSheet(
                 profile = profile,
                 onClose = { showSettings = false },
-                onEditSplit = {
-                    showSettings = false
-                    showSplitEditor = true
-                },
-                onEditStrengthPrs = {
-                    showSettings = false
-                    viewModel.openStrengthPrSettings()
-                },
-                onEditActivityTypes = {
-                    showSettings = false
-                    showActivityTypeSettings = true
-                },
-                onEditCalendar = {
-                    showSettings = false
-                    showCalendarEdit = true
-                },
+                onEditSplit = { showSplitEditor = true },
+                onEditStrengthPrs = viewModel::openStrengthPrSettings,
+                onEditActivityTypes = { showActivityTypeSettings = true },
+                onEditCalendar = { showCalendarEdit = true },
                 onToggleWeightUnit = viewModel::toggleWeightUnit,
                 onProfileNameChange = viewModel::setProfileName,
             )
@@ -341,9 +329,7 @@ fun HomeScreen(
             exit = slideOutVertically(targetOffsetY = { it }),
             modifier = Modifier.fillMaxSize(),
         ) {
-            StrengthPrSettingsScreen(
-                onClose = viewModel::closeStrengthPrSettings,
-            )
+            StrengthPrSettingsScreen(onClose = viewModel::closeStrengthPrSettings)
         }
 
         if (uiState.detailExerciseName != null) {
