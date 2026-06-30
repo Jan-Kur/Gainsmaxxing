@@ -22,7 +22,9 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setProfileName(name: String) {
         val current = userPreferencesDao.get()?.toDomain() ?: DEFAULT_PROFILE
-        userPreferencesDao.upsert(current.copy(name = name.trim()).toEntity())
+        val trimmed = name.trim()
+        val nextName = if (trimmed.isBlank()) current.name else trimmed
+        userPreferencesDao.upsert(current.copy(name = nextName).toEntity())
     }
 
     suspend fun setWeightUnit(unit: WeightUnit) {
