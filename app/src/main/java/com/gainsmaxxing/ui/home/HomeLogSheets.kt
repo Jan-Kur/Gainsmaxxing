@@ -100,7 +100,8 @@ fun StrengthPrLogSheet(
         onDisplayChange = { displayValue = it },
         onDismiss = onDismiss,
         onSave = {
-            onSave(WeightFormat.displayToKg(displayValue, weightUnit))
+            val kg = WeightFormat.displayToKg(displayValue, weightUnit)
+            if (kg > 0f) onSave(kg)
         },
         saveLabel = "Save 1RM",
     )
