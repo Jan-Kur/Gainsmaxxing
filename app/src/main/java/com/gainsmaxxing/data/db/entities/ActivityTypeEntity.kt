@@ -8,6 +8,7 @@ data class ActivityTypeEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val colorPaletteIndex: Int,
+    val customColorArgb: Int? = null,
     val iconKey: String,
     val sortOrder: Int,
 )

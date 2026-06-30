@@ -46,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -139,6 +140,7 @@ fun ActivityTypeSettingsScreen(
             },
             onNameChange = viewModel::updateTypeName,
             onColorChange = viewModel::updateTypeColor,
+            onCustomColorChange = viewModel::updateTypeCustomColor,
             onIconChange = viewModel::updateTypeIcon,
             modifier = Modifier
                 .weight(1f)
@@ -174,6 +176,7 @@ private fun ReorderableActivityTypeList(
     onToggleExpanded: (Long) -> Unit,
     onNameChange: (Long, String) -> Unit,
     onColorChange: (Long, Int) -> Unit,
+    onCustomColorChange: (Long, Int) -> Unit,
     onIconChange: (Long, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -278,8 +281,10 @@ private fun ReorderableActivityTypeList(
                     Spacer(Modifier.height(8.dp))
                     ActivityTypeAppearancePickers(
                         selectedColorIndex = type.colorPaletteIndex,
+                        selectedCustomColorArgb = type.customColorArgb,
                         selectedIconKey = type.iconKey,
                         onColorChange = { onColorChange(type.id, it) },
+                        onCustomColorChange = { onCustomColorChange(type.id, it) },
                         onIconChange = { onIconChange(type.id, it) },
                     )
                 }
@@ -351,7 +356,7 @@ private fun ActivityTypeRow(
     onNameChange: (String) -> Unit,
     dragHandleModifier: Modifier,
 ) {
-    val color = activityColor(type.colorPaletteIndex)
+    val color = activityTypeColor(type.colorPaletteIndex, type.customColorArgb)
     val icon = CalendarIcons.resolve(type.iconKey)
 
     Row(
@@ -389,23 +394,37 @@ private fun ActivityTypeRow(
             singleLine = true,
             modifier = Modifier.weight(1f),
         )
-        Icon(
-            if (isExpanded) Lucide.ChevronUp else Lucide.ChevronDown,
-            contentDescription = "Edit appearance",
-            tint = TextTertiary,
+        Spacer(Modifier.width(8.dp))
+        Box(
             modifier = Modifier
-                .size(18.dp)
+                .size(44.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(if (isExpanded) Surface2 else Color.Transparent)
                 .clickableNoRipple(onToggleExpanded),
-        )
-        Spacer(Modifier.width(4.dp))
-        Icon(
-            Lucide.Trash2,
-            contentDescription = "Delete activity type",
-            tint = TextTertiary,
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                if (isExpanded) Lucide.ChevronUp else Lucide.ChevronDown,
+                contentDescription = "Edit appearance",
+                tint = if (isExpanded) Green500 else TextSecondary,
+                modifier = Modifier.size(22.dp),
+            )
+        }
+        Spacer(Modifier.width(20.dp))
+        Box(
             modifier = Modifier
-                .size(18.dp)
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
                 .clickableNoRipple(onDelete),
-        )
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Lucide.Trash2,
+                contentDescription = "Delete activity type",
+                tint = TextTertiary,
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
 
@@ -413,10 +432,14 @@ private fun ActivityTypeRow(
 @Composable
 private fun ActivityTypeAppearancePickers(
     selectedColorIndex: Int,
+    selectedCustomColorArgb: Int?,
     selectedIconKey: String,
     onColorChange: (Int) -> Unit,
+    onCustomColorChange: (Int) -> Unit,
     onIconChange: (String) -> Unit,
 ) {
+    val currentColor = activityTypeColor(selectedColorIndex, selectedCustomColorArgb)
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -432,7 +455,7 @@ private fun ActivityTypeAppearancePickers(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             ActivityColorPalette.take(CalendarRepository.ACTIVITY_COLOR_COUNT).forEachIndexed { index, color ->
-                val selected = index == selectedColorIndex
+                val selected = selectedCustomColorArgb == null && index == selectedColorIndex
                 Box(
                     modifier = Modifier
                         .size(32.dp)
@@ -447,6 +470,12 @@ private fun ActivityTypeAppearancePickers(
                 )
             }
         }
+
+        Text("Custom color", style = MaterialTheme.typography.caption, color = TextSecondary)
+        HsvColorPicker(
+            color = currentColor,
+            onColorChange = { onCustomColorChange(it.toArgb()) },
+        )
 
         Text("Icon", style = MaterialTheme.typography.caption, color = TextSecondary)
         FlowRow(

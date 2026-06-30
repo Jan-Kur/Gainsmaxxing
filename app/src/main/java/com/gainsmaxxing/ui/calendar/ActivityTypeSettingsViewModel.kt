@@ -16,6 +16,7 @@ data class ActivityTypeDraft(
     val id: Long,
     val name: String,
     val colorPaletteIndex: Int,
+    val customColorArgb: Int? = null,
     val iconKey: String,
 )
 
@@ -112,7 +113,20 @@ class ActivityTypeSettingsViewModel @Inject constructor(
     fun updateTypeColor(id: Long, colorIndex: Int) {
         _uiState.value = _uiState.value.copy(
             types = _uiState.value.types.map { draft ->
-                if (draft.id == id) draft.copy(colorPaletteIndex = colorIndex) else draft
+                if (draft.id == id) {
+                    draft.copy(colorPaletteIndex = colorIndex, customColorArgb = null)
+                } else {
+                    draft
+                }
+            },
+            errorMessage = null,
+        )
+    }
+
+    fun updateTypeCustomColor(id: Long, colorArgb: Int) {
+        _uiState.value = _uiState.value.copy(
+            types = _uiState.value.types.map { draft ->
+                if (draft.id == id) draft.copy(customColorArgb = colorArgb) else draft
             },
             errorMessage = null,
         )
@@ -143,6 +157,7 @@ class ActivityTypeSettingsViewModel @Inject constructor(
                             name = trimmed,
                             colorPaletteIndex = draft.colorPaletteIndex,
                             iconKey = draft.iconKey,
+                            customColorArgb = draft.customColorArgb,
                         )
                     } else {
                         calendarRepository.updateActivityType(
@@ -150,6 +165,7 @@ class ActivityTypeSettingsViewModel @Inject constructor(
                                 id = draft.id,
                                 name = trimmed,
                                 colorPaletteIndex = draft.colorPaletteIndex,
+                                customColorArgb = draft.customColorArgb,
                                 iconKey = draft.iconKey,
                                 sortOrder = 0,
                             ),
@@ -174,6 +190,7 @@ class ActivityTypeSettingsViewModel @Inject constructor(
         id = id,
         name = name,
         colorPaletteIndex = colorPaletteIndex,
+        customColorArgb = customColorArgb,
         iconKey = iconKey,
     )
 }

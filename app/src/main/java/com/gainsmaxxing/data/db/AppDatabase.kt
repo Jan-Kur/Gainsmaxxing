@@ -42,7 +42,7 @@ import com.gainsmaxxing.data.db.entities.WorkoutSessionEntity
         StrengthPrExerciseEntity::class,
         StrengthPrSelectionEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 abstract class AppDatabase : RoomDatabase() {
