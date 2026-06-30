@@ -23,7 +23,7 @@ Living document for **what is built**, **how it behaves**, and **what to build n
 ui/          Stateless Composables + ViewModels (per feature)
 domain/      Plain models + pure logic (no Android imports)
 data/
-  db/        Room entities, DAOs, AppDatabase (v2)
+  db/        Room entities, DAOs, AppDatabase (v3)
   mapper/    Entity ↔ domain
   repository/ Sole data access from ViewModels
 di/          Hilt modules
@@ -53,14 +53,15 @@ di/          Hilt modules
 | `bodyweight_entries` | `date` (PK), `weightKg` — one per calendar date |
 | `sleep_entries` | `date` (PK), `hours`, `energyTag` (`SLEEPY` / `NEUTRAL` / `ENERGISED`) |
 | `strength_pr_entries` | `exerciseName`, `oneRmKg`, `loggedAtEpochMs` — history per exercise |
-| `strength_pr_selection` | `exerciseName` (PK), `sortOrder` — up to 4 exercises on Home |
+| `strength_pr_exercises` | `name` (PK), `sortOrder` — user-managed strength PR catalog |
+| `strength_pr_selection` | `exerciseName` (PK), `sortOrder` — up to 4 catalog exercises shown on Home |
 
-Migration: `MIGRATION_1_2` in `data/db/Migrations.kt`. Schema export: `app/schemas/` (v2).
+Migration: `MIGRATION_1_2`, `MIGRATION_2_3` in `data/db/Migrations.kt`. Schema export: `app/schemas/` (v3).
 
 ### Repositories
 
 - **`BodyMetricsRepository`** — bodyweight (26-week window); sleep chart via `observeSleepChart()` + `SleepChartSlots`; upsert per date.
-- **`StrengthPrRepository`** — selection list, 1RM entry history, summaries for Home cards.
+- **`StrengthPrRepository`** — exercise catalog, display selection, 1RM entry history, summaries for Home cards.
 - **`UserPreferencesRepository`** — profile name, weight unit (unchanged).
 
 ### Domain logic
@@ -82,7 +83,7 @@ Migration: `MIGRATION_1_2` in `data/db/Migrations.kt`. Schema export: `app/schem
 
 **Strength PRs**
 
-- **Settings → Strength Records**: configure up to 4 free-text exercise names.
+- **Settings → Strength Records**: add exercises to a catalog (name only); toggle up to 4 for Home display; delete removes from catalog and wipes history.
 - Home grid: latest 1RM + delta vs previous (`—` on first entry); grid height fits row count (1 row for 1–2 exercises).
 - Tap card → detail overlay: 1RM chart + dated entry list (read-only).
 - **+** on detail → log new 1RM bottom sheet.
@@ -136,8 +137,8 @@ Skip flags are **per calendar date**, not on the template.
 | Active workout persistence | Auto-save every set; resume on reopen |
 | Minimize vs discard vs finish | Back = minimize; X = discard; Finish = save |
 | History / active overlay dismiss | No swipe; back or explicit buttons only |
-| Strength PR identity | Free-text `exerciseName`, not linked to workout catalog |
-| Strength PR UX | Settings picks exercises; detail screen for history + log |
+| Strength PR identity | Free-text `exerciseName` in a dedicated catalog, not linked to workout catalog |
+| Strength PR UX | Catalog + display toggles in Settings; detail screen for history + log |
 | Body/sleep edit | Log only via +; past entries read-only on charts |
 | Running tab until Strava | Empty state, no mock data |
 
@@ -147,7 +148,7 @@ Skip flags are **per calendar date**, not on the template.
 
 | Layer | Key files |
 |-------|-----------|
-| UI | `HomeScreen.kt`, `HomeViewModel.kt`, `HomeLogSheets.kt`, `StrengthPrDetailScreen.kt`, `StrengthPrSettingsScreen.kt`, `SettingsSheet.kt` |
+| UI | `HomeScreen.kt`, `HomeViewModel.kt`, `HomeLogSheets.kt`, `StrengthPrDetailScreen.kt`, `StrengthPrSettingsScreen.kt`, `StrengthPrSettingsViewModel.kt`, `SettingsSheet.kt` |
 | Data | `BodyMetricsRepository.kt`, `StrengthPrRepository.kt`, `BodyMetricsDao.kt`, `StrengthPrDao.kt`, `HomeMappers.kt`, `Migrations.kt` |
 | Domain | `BodyweightEntry.kt`, `SleepEntry.kt`, `EnergyTag.kt`, `StrengthPrEntry.kt`, `StrengthPrComparison.kt`, `SleepChartSlots.kt`, `SleepFormat.kt` |
 

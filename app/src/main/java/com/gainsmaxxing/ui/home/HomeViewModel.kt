@@ -118,13 +118,6 @@ class HomeViewModel @Inject constructor(
     private val _showStrengthPrSettings = MutableStateFlow(false)
     val showStrengthPrSettings: StateFlow<Boolean> = _showStrengthPrSettings.asStateFlow()
 
-    val strengthPrSelection: StateFlow<List<String>> =
-        strengthPrRepository.observeSelection().stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList(),
-        )
-
     fun toggleWeightUnit() {
         viewModelScope.launch {
             val next = when (uiState.value.profile.weightUnit) {
@@ -176,13 +169,6 @@ class HomeViewModel @Inject constructor(
 
     fun closeStrengthPrSettings() {
         _showStrengthPrSettings.value = false
-    }
-
-    fun saveStrengthPrSelection(names: List<String>) {
-        viewModelScope.launch {
-            strengthPrRepository.saveSelection(names)
-            _showStrengthPrSettings.value = false
-        }
     }
 
     private fun StrengthPrEntry.toUi(unit: WeightUnit): StrengthPrEntryUi {

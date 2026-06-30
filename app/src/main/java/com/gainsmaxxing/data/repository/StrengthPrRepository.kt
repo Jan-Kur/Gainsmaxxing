@@ -2,6 +2,7 @@ package com.gainsmaxxing.data.repository
 
 import com.gainsmaxxing.data.db.dao.StrengthPrDao
 import com.gainsmaxxing.data.db.entities.StrengthPrEntryEntity
+import com.gainsmaxxing.data.db.entities.StrengthPrExerciseEntity
 import com.gainsmaxxing.data.db.entities.StrengthPrSelectionEntity
 import com.gainsmaxxing.data.mapper.toDomain
 import com.gainsmaxxing.domain.model.StrengthPrEntry
@@ -17,13 +18,28 @@ data class StrengthPrSummary(
     val entries: List<StrengthPrEntry>,
 )
 
+data class StrengthPrSettings(
+    val catalog: List<String>,
+    val selected: List<String>,
+)
+
 @Singleton
 class StrengthPrRepository @Inject constructor(
     private val strengthPrDao: StrengthPrDao,
 ) {
+    fun observeCatalog(): Flow<List<String>> =
+        strengthPrDao.observeCatalog().map { rows ->
+            rows.map { it.name }
+        }
+
     fun observeSelection(): Flow<List<String>> =
         strengthPrDao.observeSelection().map { rows ->
             rows.map { it.exerciseName }
+        }
+
+    fun observeSettings(): Flow<StrengthPrSettings> =
+        combine(observeCatalog(), observeSelection()) { catalog, selected ->
+            StrengthPrSettings(catalog = catalog, selected = selected)
         }
 
     fun observeSummaries(): Flow<List<StrengthPrSummary>> =
@@ -60,11 +76,45 @@ class StrengthPrRepository @Inject constructor(
         )
     }
 
-    suspend fun saveSelection(exerciseNames: List<String>) {
-        val trimmed = exerciseNames
+    suspend fun addExercise(name: String) {
+        val trimmed = name.trim()
+        require(trimmed.isNotEmpty()) { "Exercise name cannot be blank" }
+        val catalog = strengthPrDao.getAllCatalogNames()
+        require(trimmed !in catalog) { "Exercise already exists" }
+        strengthPrDao.insertCatalogExercise(
+            StrengthPrExerciseEntity(
+                name = trimmed,
+                sortOrder = strengthPrDao.maxCatalogSortOrder() + 1,
+            ),
+        )
+    }
+
+    suspend fun deleteExercise(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        strengthPrDao.deleteExerciseCompletely(trimmed)
+    }
+
+    suspend fun syncCatalog(previousCatalog: List<String>, nextCatalog: List<String>) {
+        val previous = previousCatalog.toSet()
+        val next = nextCatalog
             .asSequence()
             .map { it.trim() }
             .filter { it.isNotEmpty() }
+            .distinct()
+            .toList()
+        val nextSet = next.toSet()
+        (previous - nextSet).forEach { deleteExercise(it) }
+        val added = nextSet - previous
+        added.forEach { addExercise(it) }
+    }
+
+    suspend fun saveSelection(exerciseNames: List<String>) {
+        val catalog = strengthPrDao.getAllCatalogNames().toSet()
+        val trimmed = exerciseNames
+            .asSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && it in catalog }
             .distinct()
             .take(MAX_SELECTION)
             .toList()

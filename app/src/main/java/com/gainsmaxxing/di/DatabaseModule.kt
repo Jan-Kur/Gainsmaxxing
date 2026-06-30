@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.gainsmaxxing.data.db.AppDatabase
 import com.gainsmaxxing.data.db.MIGRATION_1_2
+import com.gainsmaxxing.data.db.MIGRATION_2_3
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,7 +22,7 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "gainsmaxxing.db",
-        ).addMigrations(MIGRATION_1_2).build()
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
 
     @Provides
     fun provideExerciseDao(db: AppDatabase) = db.exerciseDao()
