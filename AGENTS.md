@@ -159,22 +159,9 @@ Unit tests mirror this under `app/src/test/java/com/gainsmaxxing/`.
 - Keep domain models separate from Room entities / Strava DTOs; map between them in the repository.
 - Hoist state: Composables stay stateless, state down / events up.
 
-## Data Model
-
-Only the decisions worth not re-deriving. Everything else (id/date types, obvious fields) is Claude's call at write time.
-
-- **Weekday is `0–6`, 0 = Monday.** ⚠️ `java.time.DayOfWeek` is 1 = Monday … 7 = Sunday — convert at the boundary, never mix the two.
-- **Weights stored in kg only.** kg/lb is a display setting; no unit stored with the value.
-- **Source tagging:** records carry a `source` (manual vs strava) so origin can change without a migration. v1: running PRs from Strava, strength PRs from manual 1RM entries, body metrics manual.
-- **Calendar is done-by-default:** completions are never stored. Skipping writes a skip-exception `(date, activityTypeId)` instead.
-- **Activity colour vs icon:** an activity *family* owns the colour; an activity *type* owns the icon (so long/short runs share a colour, differ by icon).
-- **Calendar → Workout link is one-way:** an activity type can open the active split's template for that weekday; workouts never write back to the calendar.
-- **Workout sessions are immutable once finished.** The reference weight/reps in an active workout = the most recent finished session for that exercise (nothing on the first one).
-- **Set PR badges are separate from Home strength PRs.** Workout PR badges are based on the heaviest logged weight for an exercise and stay scoped to workout/history views.
-
 ## Keeping This File Current
 
-As libraries get chosen and the data model grows, update the [Tech Stack](#tech-stack) and [Data Model](#data-model) sections — keep it lean, only what a fresh session would otherwise get wrong.
+As libraries get chosen we do some work, update the [Tech Stack](#tech-stack) and [Next up](#known-gaps--next-up) sections — keep it lean, only what a fresh session would otherwise get wrong.
 
 ## Important Rules
 
@@ -200,7 +187,7 @@ As of the initial UI implementation:
 ### Branch
 
 - Don't touch any files on the main branch. Always create a new branch or work on an existing one
-- Naming: feat/, fix/
+- Naming: feat/, fix/; use a more general name if the work might involve more than just the one single change
 - Never commit directly to main or develop
 
 ### Commits
