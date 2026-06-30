@@ -69,8 +69,9 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         db.execSQL(
             """
             INSERT OR IGNORE INTO `strength_pr_exercises` (`name`, `sortOrder`)
-            SELECT `exerciseName`, 1000 + `id` FROM `strength_pr_entries`
+            SELECT `exerciseName`, 1000 + MIN(`id`) FROM `strength_pr_entries`
             WHERE `exerciseName` NOT IN (SELECT `name` FROM `strength_pr_exercises`)
+            GROUP BY `exerciseName`
             """.trimIndent(),
         )
     }
