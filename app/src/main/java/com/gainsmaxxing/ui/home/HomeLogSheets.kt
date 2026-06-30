@@ -248,7 +248,8 @@ fun SleepLogSheet(
 
             Spacer(Modifier.height(28.dp))
             WorkoutCtaButton("Save sleep") {
-                onSave(SleepFormat.hoursAndMinutesToFloat(sleepHours, sleepMinutes), energyTag)
+                val hours = SleepFormat.hoursAndMinutesToFloat(sleepHours, sleepMinutes)
+                if (hours >= 1f / 60f) onSave(hours, energyTag)
             }
             Spacer(Modifier.height(4.dp))
             Text(
