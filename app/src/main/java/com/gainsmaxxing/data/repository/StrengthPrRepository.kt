@@ -62,9 +62,12 @@ class StrengthPrRepository @Inject constructor(
 
     suspend fun saveSelection(exerciseNames: List<String>) {
         val trimmed = exerciseNames
+            .asSequence()
             .map { it.trim() }
             .filter { it.isNotEmpty() }
+            .distinct()
             .take(MAX_SELECTION)
+            .toList()
         val entities = trimmed.mapIndexed { index, name ->
             StrengthPrSelectionEntity(exerciseName = name, sortOrder = index)
         }
