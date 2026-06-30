@@ -56,14 +56,15 @@ interface SessionSetDao {
     @Query(
         """
         SELECT * FROM session_sets
-        WHERE sessionId IN (
+        WHERE exerciseId = :exerciseId
+          AND sessionId IN (
             SELECT id FROM workout_sessions
             WHERE status = 'COMPLETED' AND id IN (
                 SELECT sessionId FROM session_sets WHERE exerciseId = :exerciseId
             )
         )
         ORDER BY sessionId ASC, sortOrder ASC
-        """,
+        """
     )
     suspend fun getCompletedSetsForExercise(exerciseId: Long): List<SessionSetEntity>
 
