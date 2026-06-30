@@ -38,5 +38,5 @@ val SleepNeutral = Color(0xFF0A6C3E)
 val SleepEnergised = Color(0xFF00E676)
 /** Logged PR set pill — dark amber fill, gold border/text. */
 val SetPillPrBg = Color(0xFF2A1F0A)
-val SetPillPrBorder = Color(0xFFFFC24D)
+val SetPillPrBorder = Amber400.copy(alpha = 0.32f)
 val SetPillPrText = Color(0xFFFFC24D)
