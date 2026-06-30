@@ -43,6 +43,7 @@ import com.composables.icons.lucide.Dumbbell
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Scale
 import com.composables.icons.lucide.Trophy
+import com.composables.icons.lucide.Upload
 import com.gainsmaxxing.domain.WeightFormat
 import com.gainsmaxxing.domain.model.UserProfile
 import com.gainsmaxxing.ui.components.clickableNoRipple
@@ -70,6 +71,8 @@ fun SettingsSheet(
     onEditCalendar: () -> Unit,
     onToggleWeightUnit: () -> Unit,
     onProfileNameChange: (String) -> Unit,
+    onExportData: () -> Unit,
+    onImportData: () -> Unit,
 ) {
     var editingName by remember { mutableStateOf(false) }
     var draftName by remember(profile.name) { mutableStateOf(profile.name) }
@@ -281,6 +284,15 @@ fun SettingsSheet(
                     iconBg = Color.White.copy(alpha = 0.07f),
                     iconTint = TextSecondary,
                     label = "Export Data",
+                    onClick = onExportData,
+                )
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).padding(start = 58.dp).background(Color.White.copy(alpha = 0.06f)))
+                SettingsRow(
+                    icon = Lucide.Upload,
+                    iconBg = Color.White.copy(alpha = 0.07f),
+                    iconTint = TextSecondary,
+                    label = "Import Data",
+                    onClick = onImportData,
                 )
             }
         }

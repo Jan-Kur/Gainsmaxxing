@@ -3,6 +3,9 @@ package com.gainsmaxxing.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gainsmaxxing.data.repository.BodyMetricsRepository
+import com.gainsmaxxing.data.repository.BackupMessage
+import com.gainsmaxxing.data.repository.ExportPayload
+import com.gainsmaxxing.data.repository.ExportRepository
 import com.gainsmaxxing.data.repository.StrengthPrRepository
 import com.gainsmaxxing.data.repository.UserPreferencesRepository
 import com.gainsmaxxing.domain.StrengthPrComparison
@@ -17,9 +20,12 @@ import com.gainsmaxxing.data.repository.StrengthPrSummary
 import com.gainsmaxxing.domain.SleepChartSlots
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
@@ -62,6 +68,7 @@ class HomeViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val bodyMetricsRepository: BodyMetricsRepository,
     private val strengthPrRepository: StrengthPrRepository,
+    private val exportRepository: ExportRepository,
 ) : ViewModel() {
 
     private val detailExercise = MutableStateFlow<String?>(null)
@@ -117,6 +124,48 @@ class HomeViewModel @Inject constructor(
 
     private val _showStrengthPrSettings = MutableStateFlow(false)
     val showStrengthPrSettings: StateFlow<Boolean> = _showStrengthPrSettings.asStateFlow()
+
+    private val _exportPayload = MutableSharedFlow<ExportPayload>(extraBufferCapacity = 1)
+    val exportPayload: SharedFlow<ExportPayload> = _exportPayload.asSharedFlow()
+
+    private val _requestImportPicker = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val requestImportPicker: SharedFlow<Unit> = _requestImportPicker.asSharedFlow()
+
+    private val _backupMessage = MutableSharedFlow<BackupMessage>(extraBufferCapacity = 1)
+    val backupMessage: SharedFlow<BackupMessage> = _backupMessage.asSharedFlow()
+
+    fun requestExport() {
+        viewModelScope.launch {
+            runCatching { exportRepository.createExport() }
+                .onSuccess { _exportPayload.emit(it) }
+                .onFailure { emitBackupError("Export failed") }
+        }
+    }
+
+    fun requestImport() {
+        viewModelScope.launch {
+            _requestImportPicker.emit(Unit)
+        }
+    }
+
+    fun importFromJson(json: String?) {
+        viewModelScope.launch {
+            if (json.isNullOrBlank()) {
+                emitBackupError("Backup file is empty")
+                return@launch
+            }
+            runCatching { exportRepository.importFromJson(json) }
+                .onSuccess {
+                    closeStrengthPrDetail()
+                    _backupMessage.emit(BackupMessage("Data restored"))
+                }
+                .onFailure { emitBackupError(it.message ?: "Import failed") }
+        }
+    }
+
+    private suspend fun emitBackupError(message: String) {
+        _backupMessage.emit(BackupMessage(message, isError = true))
+    }
 
     fun toggleWeightUnit() {
         viewModelScope.launch {

@@ -43,6 +43,9 @@ interface WorkoutSessionDao {
         """,
     )
     suspend fun getCompletedSessionsForExercise(exerciseId: Long): List<WorkoutSessionEntity>
+
+    @Query("SELECT * FROM workout_sessions ORDER BY startedAtEpochMs ASC")
+    suspend fun getAll(): List<WorkoutSessionEntity>
 }
 
 @Dao
@@ -85,4 +88,7 @@ interface SessionSetDao {
 
     @Query("SELECT COALESCE(MAX(sortOrder), -1) FROM session_sets WHERE sessionId = :sessionId")
     suspend fun maxSortOrder(sessionId: Long): Int
+
+    @Query("SELECT * FROM session_sets ORDER BY sessionId ASC, sortOrder ASC")
+    suspend fun getAll(): List<SessionSetEntity>
 }

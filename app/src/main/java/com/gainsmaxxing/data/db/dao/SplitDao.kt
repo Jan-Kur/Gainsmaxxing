@@ -25,6 +25,9 @@ interface SplitDao {
     @Query("SELECT * FROM split_days ORDER BY dayOfWeek ASC")
     fun observeSplitDays(): Flow<List<SplitDayEntity>>
 
+    @Query("SELECT * FROM split_days ORDER BY dayOfWeek ASC")
+    suspend fun getSplitDays(): List<SplitDayEntity>
+
     @Query(
         """
         SELECT te.id, te.dayOfWeek, te.exerciseId, te.sortOrder, te.targetSets, te.targetReps,
@@ -35,6 +38,9 @@ interface SplitDao {
         """,
     )
     fun observeTemplateExercises(): Flow<List<TemplateExerciseWithExercise>>
+
+    @Query("SELECT * FROM template_exercises ORDER BY dayOfWeek ASC, sortOrder ASC")
+    suspend fun getTemplateExercises(): List<TemplateExerciseEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertSplitDay(splitDay: SplitDayEntity)
