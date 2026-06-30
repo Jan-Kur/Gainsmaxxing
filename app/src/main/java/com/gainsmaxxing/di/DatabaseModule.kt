@@ -49,4 +49,7 @@ object DatabaseModule {
 
     @Provides
     fun provideStrengthPrDao(db: AppDatabase) = db.strengthPrDao()
+
+    @Provides
+    fun provideImportDao(db: AppDatabase) = db.importDao()
 }

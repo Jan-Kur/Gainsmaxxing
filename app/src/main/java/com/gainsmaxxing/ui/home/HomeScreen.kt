@@ -1,5 +1,7 @@
 package com.gainsmaxxing.ui.home
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.slideInVertically
@@ -32,10 +34,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -56,6 +63,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -63,6 +71,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Plus
+import com.gainsmaxxing.data.export.ExportCodec
+import com.gainsmaxxing.data.repository.ExportPayload
 import com.gainsmaxxing.domain.SleepFormat
 import com.gainsmaxxing.domain.WeightFormat
 import com.gainsmaxxing.domain.model.BodyweightEntry
@@ -127,6 +137,52 @@ fun HomeScreen(
     var showBodyweightLog by remember { mutableStateOf(false) }
     var showSleepLog by remember { mutableStateOf(false) }
     var showStrengthPrLog by remember { mutableStateOf(false) }
+    var showImportConfirm by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    var pendingExport by remember { mutableStateOf<ExportPayload?>(null) }
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument(ExportCodec.MIME_TYPE),
+    ) { uri ->
+        val payload = pendingExport
+        pendingExport = null
+        if (uri != null && payload != null) {
+            context.contentResolver.openOutputStream(uri)?.use { stream ->
+                stream.write(payload.json.toByteArray(Charsets.UTF_8))
+            }
+        }
+    }
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        val json = uri?.let { importUri ->
+            context.contentResolver.openInputStream(importUri)?.use { stream ->
+                stream.readBytes().toString(Charsets.UTF_8)
+            }
+        }
+        viewModel.importFromJson(json)
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.exportPayload.collect { payload ->
+            pendingExport = payload
+            exportLauncher.launch(payload.fileName)
+        }
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.requestImportPicker.collect {
+            importLauncher.launch(arrayOf(ExportCodec.MIME_TYPE))
+        }
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.backupMessage.collect { message ->
+            snackbarHostState.showSnackbar(message.text)
+        }
+    }
 
     val hour = java.time.LocalTime.now().hour
     val greeting = if (hour < 12) "Good morning" else if (hour < 18) "Good afternoon" else "Good evening"
@@ -136,6 +192,37 @@ fun HomeScreen(
     val prLogDefaultKg = uiState.detailEntries.maxByOrNull { it.date }?.oneRmKg ?: 60f
 
     Box(modifier = Modifier.fillMaxSize().background(BgBase)) {
+        if (showImportConfirm) {
+            AlertDialog(
+                onDismissRequest = { showImportConfirm = false },
+                title = {
+                    Text("Import backup?", color = TextPrimary)
+                },
+                text = {
+                    Text(
+                        "This replaces all workouts, metrics, calendar data, and settings on this device.",
+                        color = TextSecondary,
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showImportConfirm = false
+                            viewModel.requestImport()
+                        },
+                    ) {
+                        Text("Replace", color = Green500)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showImportConfirm = false }) {
+                        Text("Cancel", color = TextSecondary)
+                    }
+                },
+                containerColor = Surface1,
+            )
+        }
+
         Column(modifier = Modifier.fillMaxSize()) {
             // Fixed header
             Row(
@@ -293,6 +380,8 @@ fun HomeScreen(
                 onEditCalendar = { showCalendarEdit = true },
                 onToggleWeightUnit = viewModel::toggleWeightUnit,
                 onProfileNameChange = viewModel::setProfileName,
+                onExportData = viewModel::requestExport,
+                onImportData = { showImportConfirm = true },
             )
         }
 
@@ -376,6 +465,13 @@ fun HomeScreen(
                 },
             )
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(16.dp),
+        )
     }
 }
 

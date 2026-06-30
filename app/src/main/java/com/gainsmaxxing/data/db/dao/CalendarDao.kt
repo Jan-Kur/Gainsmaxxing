@@ -45,6 +45,12 @@ interface CalendarDao {
     @Query("SELECT * FROM calendar_template_slots")
     fun observeTemplateSlots(): Flow<List<CalendarTemplateSlotEntity>>
 
+    @Query("SELECT * FROM calendar_template_slots")
+    suspend fun getTemplateSlots(): List<CalendarTemplateSlotEntity>
+
+    @Query("SELECT * FROM calendar_skip_overrides ORDER BY date ASC, slot ASC")
+    suspend fun getAllSkips(): List<CalendarSkipEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertTemplateSlot(slot: CalendarTemplateSlotEntity)
 

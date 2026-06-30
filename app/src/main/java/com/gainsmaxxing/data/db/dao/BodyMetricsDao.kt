@@ -22,6 +22,12 @@ interface BodyMetricsDao {
     @Query("SELECT * FROM sleep_entries ORDER BY date ASC")
     fun observeAllSleep(): Flow<List<SleepEntryEntity>>
 
+    @Query("SELECT * FROM bodyweight_entries ORDER BY date ASC")
+    suspend fun getAllBodyweight(): List<BodyweightEntryEntity>
+
+    @Query("SELECT * FROM sleep_entries ORDER BY date ASC")
+    suspend fun getAllSleep(): List<SleepEntryEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertSleep(entry: SleepEntryEntity)
 }

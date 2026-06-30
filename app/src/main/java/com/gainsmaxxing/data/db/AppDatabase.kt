@@ -5,6 +5,7 @@ import androidx.room.RoomDatabase
 import com.gainsmaxxing.data.db.dao.CalendarDao
 import com.gainsmaxxing.data.db.dao.BodyMetricsDao
 import com.gainsmaxxing.data.db.dao.ExerciseDao
+import com.gainsmaxxing.data.db.dao.ImportDao
 import com.gainsmaxxing.data.db.dao.SessionSetDao
 import com.gainsmaxxing.data.db.dao.SplitDao
 import com.gainsmaxxing.data.db.dao.StrengthPrDao
@@ -54,4 +55,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun userPreferencesDao(): UserPreferencesDao
     abstract fun bodyMetricsDao(): BodyMetricsDao
     abstract fun strengthPrDao(): StrengthPrDao
+    abstract fun importDao(): ImportDao
 }
