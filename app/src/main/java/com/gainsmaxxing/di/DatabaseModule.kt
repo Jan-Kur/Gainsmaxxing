@@ -3,6 +3,7 @@ package com.gainsmaxxing.di
 import android.content.Context
 import androidx.room.Room
 import com.gainsmaxxing.data.db.AppDatabase
+import com.gainsmaxxing.data.db.MIGRATION_1_2
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -20,7 +21,7 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "gainsmaxxing.db",
-        ).build()
+        ).addMigrations(MIGRATION_1_2).build()
 
     @Provides
     fun provideExerciseDao(db: AppDatabase) = db.exerciseDao()
@@ -36,4 +37,10 @@ object DatabaseModule {
 
     @Provides
     fun provideUserPreferencesDao(db: AppDatabase) = db.userPreferencesDao()
+
+    @Provides
+    fun provideBodyMetricsDao(db: AppDatabase) = db.bodyMetricsDao()
+
+    @Provides
+    fun provideStrengthPrDao(db: AppDatabase) = db.strengthPrDao()
 }
