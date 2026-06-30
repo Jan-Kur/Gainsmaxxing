@@ -20,3 +20,6 @@ val ActivityColorPalette: List<Color> = listOf(
 
 fun activityColor(index: Int): Color =
     ActivityColorPalette[index % CalendarRepository.ACTIVITY_COLOR_COUNT]
+
+fun activityTypeColor(paletteIndex: Int, customColorArgb: Int? = null): Color =
+    if (customColorArgb != null) Color(customColorArgb) else activityColor(paletteIndex)

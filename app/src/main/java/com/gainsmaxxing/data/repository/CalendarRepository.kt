@@ -65,6 +65,7 @@ class CalendarRepository @Inject constructor(
         name: String,
         colorPaletteIndex: Int,
         iconKey: String,
+        customColorArgb: Int? = null,
     ): Long {
         val trimmed = name.trim()
         require(trimmed.isNotEmpty()) { "Name cannot be blank" }
@@ -73,6 +74,7 @@ class CalendarRepository @Inject constructor(
             ActivityTypeEntity(
                 name = trimmed,
                 colorPaletteIndex = colorPaletteIndex,
+                customColorArgb = customColorArgb,
                 iconKey = iconKey,
                 sortOrder = calendarDao.maxActivityTypeSortOrder() + 1,
             ),

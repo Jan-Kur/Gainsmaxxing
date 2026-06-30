@@ -11,6 +11,7 @@ fun ActivityTypeEntity.toDomain(): CalendarActivityType = CalendarActivityType(
     id = id,
     name = name,
     colorPaletteIndex = colorPaletteIndex,
+    customColorArgb = customColorArgb,
     iconKey = iconKey,
     sortOrder = sortOrder,
 )
@@ -19,6 +20,7 @@ fun CalendarActivityType.toEntity(): ActivityTypeEntity = ActivityTypeEntity(
     id = id,
     name = name,
     colorPaletteIndex = colorPaletteIndex,
+    customColorArgb = customColorArgb,
     iconKey = iconKey,
     sortOrder = sortOrder,
 )

@@ -261,7 +261,7 @@ fun ActivitySlot(
         return
     }
 
-    val baseColor = activityColor(activityType.colorPaletteIndex)
+    val baseColor = activityTypeColor(activityType.colorPaletteIndex, activityType.customColorArgb)
     val bgColor = if (isSkipped) Color.White.copy(alpha = 0.02f) else baseColor.copy(alpha = 0.11f)
     val borderColor = if (isSkipped) Color.White.copy(alpha = 0.05f) else baseColor.copy(alpha = 0.26f)
     val contentColor = if (isSkipped) TextDisabled else baseColor
