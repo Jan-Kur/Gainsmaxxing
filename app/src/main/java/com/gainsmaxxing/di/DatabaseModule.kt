@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.gainsmaxxing.data.db.AppDatabase
 import com.gainsmaxxing.data.db.MIGRATION_1_2
 import com.gainsmaxxing.data.db.MIGRATION_2_3
+import com.gainsmaxxing.data.db.MIGRATION_3_4
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,7 +23,10 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "gainsmaxxing.db",
-        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
+        ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build()
+
+    @Provides
+    fun provideCalendarDao(db: AppDatabase) = db.calendarDao()
 
     @Provides
     fun provideExerciseDao(db: AppDatabase) = db.exerciseDao()

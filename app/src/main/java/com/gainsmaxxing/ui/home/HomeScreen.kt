@@ -70,6 +70,8 @@ import com.gainsmaxxing.domain.model.EnergyTag
 import com.gainsmaxxing.domain.model.SleepEntry
 import com.gainsmaxxing.domain.model.WeightUnit
 import com.gainsmaxxing.ui.components.clickableNoRipple
+import com.gainsmaxxing.ui.calendar.ActivityTypeSettingsScreen
+import com.gainsmaxxing.ui.calendar.CalendarEditScreen
 import com.gainsmaxxing.ui.workout.SplitEditorScreen
 import com.gainsmaxxing.ui.theme.Amber500
 import com.gainsmaxxing.ui.theme.BgBase
@@ -120,6 +122,8 @@ fun HomeScreen(
     var activeSleep by remember { mutableStateOf<Int?>(null) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showSplitEditor by rememberSaveable { mutableStateOf(false) }
+    var showActivityTypeSettings by rememberSaveable { mutableStateOf(false) }
+    var showCalendarEdit by rememberSaveable { mutableStateOf(false) }
     var showBodyweightLog by remember { mutableStateOf(false) }
     var showSleepLog by remember { mutableStateOf(false) }
     var showStrengthPrLog by remember { mutableStateOf(false) }
@@ -291,6 +295,14 @@ fun HomeScreen(
                     showSettings = false
                     viewModel.openStrengthPrSettings()
                 },
+                onEditActivityTypes = {
+                    showSettings = false
+                    showActivityTypeSettings = true
+                },
+                onEditCalendar = {
+                    showSettings = false
+                    showCalendarEdit = true
+                },
                 onToggleWeightUnit = viewModel::toggleWeightUnit,
                 onProfileNameChange = viewModel::setProfileName,
             )
@@ -303,6 +315,24 @@ fun HomeScreen(
             modifier = Modifier.fillMaxSize(),
         ) {
             SplitEditorScreen(onClose = { showSplitEditor = false })
+        }
+
+        AnimatedVisibility(
+            visible = showActivityTypeSettings,
+            enter = slideInVertically(initialOffsetY = { it }),
+            exit = slideOutVertically(targetOffsetY = { it }),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            ActivityTypeSettingsScreen(onClose = { showActivityTypeSettings = false })
+        }
+
+        AnimatedVisibility(
+            visible = showCalendarEdit,
+            enter = slideInVertically(initialOffsetY = { it }),
+            exit = slideOutVertically(targetOffsetY = { it }),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            CalendarEditScreen(onClose = { showCalendarEdit = false })
         }
 
         AnimatedVisibility(

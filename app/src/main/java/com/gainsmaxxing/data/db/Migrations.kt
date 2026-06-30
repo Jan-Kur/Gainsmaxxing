@@ -76,3 +76,38 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         )
     }
 }
+
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `activity_types` (
+                `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                `name` TEXT NOT NULL,
+                `colorPaletteIndex` INTEGER NOT NULL,
+                `iconKey` TEXT NOT NULL,
+                `sortOrder` INTEGER NOT NULL
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `calendar_template_slots` (
+                `dayOfWeek` INTEGER NOT NULL,
+                `slot` TEXT NOT NULL,
+                `activityTypeId` INTEGER,
+                PRIMARY KEY(`dayOfWeek`, `slot`)
+            )
+            """.trimIndent(),
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `calendar_skip_overrides` (
+                `date` TEXT NOT NULL,
+                `slot` TEXT NOT NULL,
+                PRIMARY KEY(`date`, `slot`)
+            )
+            """.trimIndent(),
+        )
+    }
+}

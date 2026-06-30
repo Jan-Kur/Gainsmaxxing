@@ -66,6 +66,8 @@ fun SettingsSheet(
     onClose: () -> Unit,
     onEditSplit: () -> Unit,
     onEditStrengthPrs: () -> Unit,
+    onEditActivityTypes: () -> Unit,
+    onEditCalendar: () -> Unit,
     onToggleWeightUnit: () -> Unit,
     onProfileNameChange: (String) -> Unit,
 ) {
@@ -208,7 +210,16 @@ fun SettingsSheet(
                     icon = Lucide.CalendarDays,
                     iconBg = Blue500.copy(alpha = 0.12f),
                     iconTint = Blue500,
+                    label = "Activity Types",
+                    onClick = onEditActivityTypes,
+                )
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).padding(start = 58.dp).background(Color.White.copy(alpha = 0.06f)))
+                SettingsRow(
+                    icon = Lucide.CalendarDays,
+                    iconBg = Blue500.copy(alpha = 0.12f),
+                    iconTint = Blue500,
                     label = "Edit Calendar",
+                    onClick = onEditCalendar,
                 )
             }
 

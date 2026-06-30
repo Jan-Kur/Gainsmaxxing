@@ -11,7 +11,7 @@ Living document for **what is built**, **how it behaves**, and **what to build n
 | Workout tab (data + UX) | **Done** (Milestone 1) |
 | User preferences (partial) | **Done** |
 | Home tab (data) | **Done** (Milestone 2) |
-| Calendar tab (data) | Not started (Milestone 3) |
+| Calendar tab (data) | **Done** (Milestone 3) |
 | Strava integration | Deferred |
 | Export data | Deferred |
 
@@ -99,18 +99,45 @@ Migration: `MIGRATION_1_2`, `MIGRATION_2_3` in `data/db/Migrations.kt`. Schema e
 
 ---
 
-## Milestone 3 — Calendar (NEXT)
+## Milestone 3 — Calendar (DONE)
 
-1. **Room** — activity types (color, icon key), weekly template slots (day × morning/evening), per-date skip overrides.
-2. **Repository** — `CalendarRepository`.
-3. **ViewModel** — `CalendarViewModel`; remove hardcoded schedule in `CalendarScreen`.
-4. **Settings → Edit Calendar** — slot editor (toggle activity / empty); activity type management.
+### Room schema (v4 additions)
 
-Skip flags are **per calendar date**, not on the template.
+| Table | Purpose |
+|-------|---------|
+| `activity_types` | `id`, `name`, `colorPaletteIndex`, `iconKey`, `sortOrder` — user-managed catalog |
+| `calendar_template_slots` | `dayOfWeek` (0=Mon…6=Sun) + `slot` (`MORNING`/`EVENING`) PK, nullable `activityTypeId` |
+| `calendar_skip_overrides` | `date` + `slot` PK — per-date skip flags |
+
+Migration: `MIGRATION_3_4` in `data/db/Migrations.kt`. Schema export: v4.
+
+### Repository
+
+- **`CalendarRepository`** — activity type CRUD + reorder; weekly template slots; per-date skip toggles; `observeWeekSchedule()` for the live tab.
+
+### Domain logic
+
+- **`CalendarCycle`** — next type when cycling slots in Edit Calendar (`empty → types in catalog order → empty`).
+
+### Calendar tab behavior
+
+- Weekly grid (day rows × morning/evening columns); chevron week navigation.
+- Template resolved by day-of-week; skip overrides layered per calendar date.
+- Tap filled slot → toggle skip (grey + strikethrough). Empty slots not tappable.
+- Fresh install → empty template (all dashed slots).
+
+### Settings
+
+- **Activity Types** — separate Settings row; full CRUD, drag reorder (cycle order), 12-color palette, 24 curated sport icons (incl. sport-shoe + basketball). Delete clears template slots using that type.
+- **Edit Calendar** — same grid layout as live tab but Mon–Sun template only (no dates / week nav). Tap any slot to cycle types. Persists immediately.
+
+### Tests
+
+- `CalendarCycleTest` under `app/src/test/`.
 
 ---
 
-## Milestone 4 — Strava
+## Milestone 4 — Strava (NEXT)
 
 1. OAuth flow (no manual token paste unless revisited).
 2. `data/remote/` — Retrofit, DTOs, mappers.
@@ -140,19 +167,20 @@ Skip flags are **per calendar date**, not on the template.
 | Strength PR identity | Free-text `exerciseName` in a dedicated catalog, not linked to workout catalog |
 | Strength PR UX | Catalog + display toggles in Settings; detail screen for history + log |
 | Body/sleep edit | Log only via +; past entries read-only on charts |
+| Calendar skip | Per calendar date, not on weekly template |
+| Calendar edit | Settings only; tap any slot to cycle; catalog order = cycle order |
 | Running tab until Strava | Empty state, no mock data |
 
 ---
 
-## Files map (home slice)
+## Files map
 
 | Layer | Key files |
 |-------|-----------|
-| UI | `HomeScreen.kt`, `HomeViewModel.kt`, `HomeLogSheets.kt`, `StrengthPrDetailScreen.kt`, `StrengthPrSettingsScreen.kt`, `StrengthPrSettingsViewModel.kt`, `SettingsSheet.kt` |
-| Data | `BodyMetricsRepository.kt`, `StrengthPrRepository.kt`, `BodyMetricsDao.kt`, `StrengthPrDao.kt`, `HomeMappers.kt`, `Migrations.kt` |
-| Domain | `BodyweightEntry.kt`, `SleepEntry.kt`, `EnergyTag.kt`, `StrengthPrEntry.kt`, `StrengthPrComparison.kt`, `SleepChartSlots.kt`, `SleepFormat.kt` |
-
----
+| UI (home) | `HomeScreen.kt`, `HomeViewModel.kt`, `HomeLogSheets.kt`, `StrengthPrDetailScreen.kt`, `StrengthPrSettingsScreen.kt`, `StrengthPrSettingsViewModel.kt`, `SettingsSheet.kt` |
+| UI (calendar) | `CalendarScreen.kt`, `CalendarViewModel.kt`, `CalendarEditViewModel.kt`, `ActivityTypeSettingsScreen.kt`, `ActivityTypeSettingsViewModel.kt`, `CalendarComponents.kt`, `CalendarPalette.kt`, `CalendarIcons.kt` |
+| Data | `CalendarRepository.kt`, `CalendarDao.kt`, `BodyMetricsRepository.kt`, `StrengthPrRepository.kt`, `CalendarMappers.kt`, `HomeMappers.kt`, `Migrations.kt` |
+| Domain | `CalendarActivityType.kt`, `TimeSlot.kt`, `CalendarCycle.kt`, `BodyweightEntry.kt`, `SleepEntry.kt`, `StrengthPrComparison.kt`, `SleepChartSlots.kt` |
 
 ## Session checklist (for agents)
 
