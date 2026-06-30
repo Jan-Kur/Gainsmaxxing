@@ -231,16 +231,20 @@ class WorkoutViewModel @Inject constructor(
         refreshUiState()
     }
 
-    private suspend fun prefetchHistoricalBests(session: WorkoutSession) {
-        val exerciseIds = session.sets.map { it.exerciseId }.distinct()
-        val bests = exerciseIds.associateWith { exerciseId ->
-            workoutRepository.getHistoricalBestWeightKg(
-                exerciseId = exerciseId,
-                excludeSessionId = session.id,
-            )
-        }
-        historicalBestByExercise.value = bests
+private suspend fun prefetchHistoricalBests(session: WorkoutSession) {
+    val existing = historicalBestByExercise.value
+    val exerciseIds = session.sets.map { it.exerciseId }.distinct()
+    val missing = exerciseIds.filterNot { existing.containsKey(it) }
+    if (missing.isEmpty()) return
+
+    val fetched = missing.associateWith { exerciseId ->
+        workoutRepository.getHistoricalBestWeightKg(
+            exerciseId = exerciseId,
+            excludeSessionId = session.id,
+        )
     }
+    historicalBestByExercise.value = existing + fetched
+}
 
     private fun buildUiState(
         selectedDay: Int,
