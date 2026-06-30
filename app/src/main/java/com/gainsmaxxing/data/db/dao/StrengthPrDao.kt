@@ -2,6 +2,7 @@ package com.gainsmaxxing.data.db.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import com.gainsmaxxing.data.db.entities.StrengthPrEntryEntity
@@ -34,6 +35,9 @@ interface StrengthPrDao {
 
     @Insert
     suspend fun insertCatalogExercise(item: StrengthPrExerciseEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertCatalogExercises(items: List<StrengthPrExerciseEntity>)
 
     @Insert
     suspend fun insertSelection(item: StrengthPrSelectionEntity)

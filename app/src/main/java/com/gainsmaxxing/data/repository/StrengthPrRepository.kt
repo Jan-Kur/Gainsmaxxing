@@ -95,6 +95,22 @@ class StrengthPrRepository @Inject constructor(
         strengthPrDao.deleteExerciseCompletely(trimmed)
     }
 
+    suspend fun saveCatalogOrder(catalog: List<String>) {
+        val existing = strengthPrDao.getAllCatalogNames().toSet()
+        val entities = catalog
+            .asSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && it in existing }
+            .distinct()
+            .mapIndexed { index, name ->
+                StrengthPrExerciseEntity(name = name, sortOrder = index)
+            }
+            .toList()
+        if (entities.isNotEmpty()) {
+            strengthPrDao.upsertCatalogExercises(entities)
+        }
+    }
+
     suspend fun syncCatalog(previousCatalog: List<String>, nextCatalog: List<String>) {
         val previous = previousCatalog.toSet()
         val next = nextCatalog

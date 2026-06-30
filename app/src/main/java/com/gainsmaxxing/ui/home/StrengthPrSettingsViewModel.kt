@@ -74,6 +74,16 @@ class StrengthPrSettingsViewModel @Inject constructor(
         )
     }
 
+    fun moveExercise(fromIndex: Int, toIndex: Int) {
+        if (fromIndex == toIndex) return
+        val state = _uiState.value
+        if (fromIndex !in state.catalog.indices || toIndex !in state.catalog.indices) return
+        val catalog = state.catalog.toMutableList()
+        val item = catalog.removeAt(fromIndex)
+        catalog.add(toIndex, item)
+        _uiState.value = state.copy(catalog = catalog, errorMessage = null)
+    }
+
     fun toggleDisplay(name: String) {
         val state = _uiState.value
         val selected = state.selected.toMutableSet()
@@ -94,6 +104,7 @@ class StrengthPrSettingsViewModel @Inject constructor(
             _uiState.value = state.copy(isSaving = true, errorMessage = null)
             runCatching {
                 strengthPrRepository.syncCatalog(persistedCatalog, state.catalog)
+                strengthPrRepository.saveCatalogOrder(state.catalog)
                 val orderedSelection = state.catalog.filter { it in state.selected }
                 strengthPrRepository.saveSelection(orderedSelection)
             }.onSuccess {
