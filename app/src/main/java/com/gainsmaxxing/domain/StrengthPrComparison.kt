@@ -21,14 +21,15 @@ object StrengthPrComparison {
     ): String {
         if (previousKg == null) return "—"
         val deltaKg = currentKg - previousKg
-        if (deltaKg == 0f) return "—"
         val deltaDisplay = WeightFormat.kgToDisplay(deltaKg, unit)
+        val rounded = (deltaDisplay * 10).roundToInt() / 10f
+        if (rounded == 0f) return "—"
         val unitLabel = WeightFormat.unitLabel(unit)
-        val sign = if (deltaKg > 0) "+" else ""
-        val valueStr = if ((deltaDisplay * 10).roundToInt() % 10 == 0) {
-            "${deltaDisplay.toInt()}"
+        val sign = if (rounded > 0f) "+" else ""
+        val valueStr = if ((rounded * 10).roundToInt() % 10 == 0) {
+            "${rounded.toInt()}"
         } else {
-            "%.1f".format(Locale.ROOT, deltaDisplay)
+            "%.1f".format(Locale.ROOT, rounded)
         }
         return "$sign$valueStr $unitLabel"
     }
